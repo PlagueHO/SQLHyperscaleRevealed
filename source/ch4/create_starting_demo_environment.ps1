@@ -1,23 +1,37 @@
 # Customize the regions you wish to deploy to.
 # Ensure these are regional pairs. Check this list:
 # https://docs.microsoft.com/azure/availability-zones/cross-region-replication-azure#azure-cross-region-replication-pairings-for-all-geographies
-$primary_region = 'West US 3'
-$failover_region = 'East US'
+$primaryRegion = 'West US 3'
+$failoverRegion = 'East US'
 
-# The string that will be prefixed
-$resource_name_prefix = -join ((48..57) + (97..122) | Get-Random -Count 4 | ForEach-Object { [char]$_} )
+# The string that will be suffixed
+$resourceNameSuffix = -join ((48..57) + (97..122) | Get-Random -Count 4 | ForEach-Object { [char]$_} )
 
-# Uncomment this line if you're prefer to use your own prefix string
+# Uncomment this line if you're prefer to use your own suffix string
 # Keep it 4 characters or less.
-# $resource_name_prefix = 'a1b2'
+# $resourceNameSuffix = 'a1b2'
 
-# These tags will be added to the resources created.
-# They can be used to easily identify that the resource is created by this script.
-$resource_tags = @{ environment = 'SQL Hyperscale Reveaeled demo' }
+# This string will be used to set the Environment tag in each resource and resource group.
+# It can be used to easily identify that the resources that created by this script and allows
+# the .\delete_demo_environment.ps1 script to delete them.
+$environment = 'SQL Hyperscale Reveaeled demo'
 
-# Create the resource groups
-Write-Progress -Activity "Creating primary region resource group '$resource_name_prefix-sqlhr01-rg' in '$primary_region'"
-New-AzResourceGroup -Name "$resource_name_prefix-sqlhr01-rg" -Location $primary_region -Tag $resource_tags | Out-Null
+New-AzDeployment `
+    -Name "sql-hyperscale-revealed-demo-$resourceNameSuffix" `
+    -Location $primaryRegion `
+    -TemplateFile .\starting_demo_environment.bicep `
+    -TemplateParameterObject @{
+        'primaryRegion' = $primaryRegion
+        'failoverRegion' = $failoverRegion
+        'resourceNameSuffix' = $resourceNameSuffix
+        'Environment' = $environment
+    }
 
-Write-Progress -Activity "Creating failover region resource group '$resource_name_prefix-sqlhr01-rg' in '$failover_region'"
-New-AzResourceGroup -Name "$resource_name_prefix-sqlhr02-rg" -Location $failover_region -Tag $resource_tags | Out-Null
+# Create Key Vault
+
+# Create Log Analytics
+
+# Create SQL Administrations security group in AAD
+
+# Create User Managed Identity
+
