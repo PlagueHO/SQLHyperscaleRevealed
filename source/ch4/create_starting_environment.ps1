@@ -14,13 +14,13 @@ $resourceNameSuffix = -join ((48..57) + (97..122) | Get-Random -Count 4 | ForEac
 
 # This string will be used to set the Environment tag in each resource and resource group.
 # It can be used to easily identify that the resources that created by this script and allows
-# the .\delete_demo_environment.ps1 script to delete them.
+# the .\delete_environment.ps1 script to delete them.
 $environment = 'SQL Hyperscale Reveaeled demo'
 
 New-AzDeployment `
     -Name "sql-hyperscale-revealed-demo-$resourceNameSuffix" `
     -Location $primaryRegion `
-    -TemplateFile (Split-Path -Path $MyInvocation.MyCommand.Path -Parent | Join-Path -ChildPath 'starting_demo_environment.bicep') `
+    -TemplateFile (Split-Path -Path $MyInvocation.MyCommand.Path -Parent | Join-Path -ChildPath 'starting_environment.bicep') `
     -TemplateParameterObject @{
         'primaryRegion' = $primaryRegion
         'failoverRegion' = $failoverRegion
