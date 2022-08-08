@@ -4,11 +4,12 @@
 $primaryRegion = 'West US 3'
 $failoverRegion = 'East US'
 
-# The string that will be suffixed
+# The string that will be suffixed into the resource groups and resource names.
+# This line generates a random string of 4 characters
 $resourceNameSuffix = -join ((48..57) + (97..122) | Get-Random -Count 4 | ForEach-Object { [char]$_} )
 
-# Uncomment this line if you're prefer to use your own suffix string
-# Keep it 4 characters or less.
+# Uncomment this line if you prefer to use your own suffix string
+# Ensure to keep it 4 characters or less.
 # $resourceNameSuffix = 'a1b2'
 
 # This string will be used to set the Environment tag in each resource and resource group.
@@ -19,7 +20,7 @@ $environment = 'SQL Hyperscale Reveaeled demo'
 New-AzDeployment `
     -Name "sql-hyperscale-revealed-demo-$resourceNameSuffix" `
     -Location $primaryRegion `
-    -TemplateFile .\starting_demo_environment.bicep `
+    -TemplateFile (Split-Path -Path $MyInvocation.MyCommand.Path -Parent | Join-Path -ChildPath 'starting_demo_environment.bicep') `
     -TemplateParameterObject @{
         'primaryRegion' = $primaryRegion
         'failoverRegion' = $failoverRegion
