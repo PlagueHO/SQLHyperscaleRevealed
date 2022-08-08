@@ -28,8 +28,6 @@ New-AzDeployment `
         'Environment' = $environment
     }
 
-# Create Key Vault
-
 # Create Log Analytics
 
 # Create SQL Administrations security group in AAD

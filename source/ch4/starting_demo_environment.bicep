@@ -65,5 +65,49 @@ module failoverVirtualNetwork './modules/virtual_network.bicep' = {
   }
 }
 
-output primaryResourceGroupName string = primaryResourceGroup.name
-output failoverResourceGroupName string = failoverResourceGroup.name
+// Create Key Vault
+var keyVaultName = 'sqlhr-${resourceNameSuffix}-kv'
+
+module keyVault './modules/key_vault.bicep' = {
+  name: 'keyVault'
+  scope: primaryResourceGroup
+  params: {
+    name: keyVaultName
+    location: primaryRegion
+    environment: environment
+    tenantId: subscription().tenantId
+  }
+}
+
+// Create Log Analytics workspaces
+var primaryLogAnalyticsWorkspaceName = 'sqlhr01-${resourceNameSuffix}-law'
+
+module primaryLogAnalyticsWorkspace './modules/log_analytics_workspace.bicep' = {
+  name: 'primaryLogAnalyticsWorkspace'
+  scope: primaryResourceGroup
+  params: {
+    name: primaryLogAnalyticsWorkspaceName
+    location: primaryRegion
+    environment: environment
+  }
+}
+
+var failoverLogAnalyticsWorkspaceName = 'sqlhr02-${resourceNameSuffix}-law'
+
+module failoverLogAnalyticsWorkspace './modules/log_analytics_workspace.bicep' = {
+  name: 'failoverLogAnalyticsWorkspace'
+  scope: failoverResourceGroup
+  params: {
+    name: failoverLogAnalyticsWorkspaceName
+    location: failoverRegion
+    environment: environment
+  }
+}
+
+output primaryResourceGroupName string = primaryResourceGroupName
+output failoverResourceGroupName string = failoverResourceGroupName
+output primaryVirtualNetworkName string = primaryVirtualNetworkName
+output failoverVirtualNetworkName string = failoverVirtualNetworkName
+output keyVaultName string = keyVaultName
+output primaryLogAnalyticsWorkspaceName string = primaryLogAnalyticsWorkspaceName
+output failoverLogAnalyticsWorkspaceName string = failoverLogAnalyticsWorkspaceName

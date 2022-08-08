@@ -5,7 +5,7 @@ param appSubnetAddressSpace string
 param dataSubnetAddressSpace string
 param environment string = 'SQL Hyperscale Reveaeled demo'
 
-resource virtual_network 'Microsoft.Network/virtualNetworks@2022-01-01' = {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
   name: name
   location: location
   properties: {
