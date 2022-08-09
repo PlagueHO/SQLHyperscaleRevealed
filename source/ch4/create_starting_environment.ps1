@@ -27,10 +27,3 @@ New-AzDeployment `
         'resourceNameSuffix' = $resourceNameSuffix
         'Environment' = $environment
     }
-
-# Create Log Analytics
-
-# Create SQL Administrations security group in AAD
-
-# Create User Managed Identity
-
