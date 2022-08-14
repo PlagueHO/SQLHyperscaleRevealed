@@ -4,7 +4,7 @@ $resource_tags = @{ environment = 'SQL Hyperscale Reveaeled demo' }
 # Find all the resource groups that match the resource_tags
 $resource_groups = Get-AzResourceGroup -Tag $resource_tags
 if ($resource_groups) {
-    $confirm = Read-Host -Prompt "The following SQL Hyperscale Revealed demonstration resource groups will be deleted: '$($resource_groups.ResourceGroupName -join ''', ''')'. Confirm by typing 'yes' and pressing enter."
+    $confirm = Read-Host -Prompt "The following SQL Hyperscale Revealed demonstration resource groups will be deleted: '$($resource_groups.ResourceGroupName -join ''', ''')'. Confirm by typing 'yes' and pressing enter"
 
     if ($confirm -eq 'yes') {
         $resource_group_deleted_count = 0
