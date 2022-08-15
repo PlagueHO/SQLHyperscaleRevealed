@@ -1,8 +1,8 @@
 # Customize the regions you wish to deploy to.
 # Ensure these are regional pairs. Check this list:
 # https://docs.microsoft.com/azure/availability-zones/cross-region-replication-azure#azure-cross-region-replication-pairings-for-all-geographies
-$primaryRegion = 'West US 3'
-$failoverRegion = 'East US'
+$primaryRegion = 'East US'
+$failoverRegion = 'West US 3'
 
 # The string that will be suffixed into the resource groups and resource names.
 # This line generates a random string of 4 characters
