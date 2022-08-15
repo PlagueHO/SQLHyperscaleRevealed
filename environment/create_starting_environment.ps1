@@ -18,7 +18,7 @@ $resourceNameSuffix = -join ((48..57) + (97..122) | Get-Random -Count 4 | ForEac
 $environment = 'SQL Hyperscale Reveaeled demo'
 
 New-AzDeployment `
-    -Name "sql-hyperscale-revealed-demo-$resourceNameSuffix" `
+    -Name "sql-hyperscale-revealed-demo-$resourceNameSuffix-$(Get-Date -Format 'yyyyMMddHHmm')" `
     -Location $primaryRegion `
     -TemplateFile (Split-Path -Path $MyInvocation.MyCommand.Path -Parent | Join-Path -ChildPath 'starting_environment.bicep') `
     -TemplateParameterObject @{
