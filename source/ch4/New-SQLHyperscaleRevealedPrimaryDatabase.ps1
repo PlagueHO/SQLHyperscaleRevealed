@@ -1,6 +1,6 @@
 <#
     .SYNOPSIS
-        Deploys the Hyperscale database to the starting envrionment in Azure.
+        Deploys the Hyperscale database to an existing starting envrionment in Azure.
 
     .PARAMETER PrimaryRegion
         The Azure region to use as the primary region.
