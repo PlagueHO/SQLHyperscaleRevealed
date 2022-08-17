@@ -75,7 +75,7 @@ New-AzDeployment `
         'primaryRegion' = $PrimaryRegion
         'failoverRegion' = $FailoverRegion
         'resourceNameSuffix' = $ResourceNameSuffix
-        'Environment' = $Environment
+        'environment' = $Environment
     }
 
 Write-Verbose -Message "To redeploy this SQL Hyperscale Revealed starting environment use: ./New-SQLHyperscaleRevealedStartingEnvironment.ps1 -PrimaryRegion '$PrimaryRegion' -FailoverRegion '$FailoverRegion' -ResourceNameSuffix '$resourceNameSuffix' -Environment '$Environment'" -Verbose
