@@ -1,5 +1,25 @@
+<#
+    .SYNOPSIS
+        Removes all SQL Hyperscale Revealed resource groups.
+
+    .PARAMETER Environment
+        This string will be used to identify the resource groups to delete. Any resource groups with
+        the Environment tag set to this value will be deleted.
+
+    .EXAMPLE
+        Remove all SQL Hyperscale Revealed resource groups.
+        ./Remove-SQLHyperscaleRevealedEnvironment.ps1
+#>
+[CmdletBinding(DefaultParameterSetName = 'ResourceNameSuffix')]
+
+param (
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    $Environment = 'SQL Hyperscale Reveaeled demo'
+)
+
 # These tags are used to deterine which resource groups to delete.
-$resource_tags = @{ environment = 'SQL Hyperscale Reveaeled demo' }
+$resource_tags = @{ environment = $Environment }
 
 # Find all the resource groups that match the resource_tags
 $resource_groups = Get-AzResourceGroup -Tag $resource_tags
