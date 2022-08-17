@@ -9,7 +9,7 @@ if ($resource_groups) {
     if ($confirm -eq 'yes') {
         $resource_group_deleted_count = 0
         $resource_groups | Foreach-Object -Process {
-            Write-Progress -Activity "Deleting the SQL Hyperscale Revealed demonstration resource group '$($_.ResourceGroupName)'" -PercentComplete ($resource_group_deleted_count / ($resource_groups.Count - 1) * 100) -Status "Deleting '$($_.ResourceGroupName)'"
+            Write-Progress -Activity "Deleting the SQL Hyperscale Revealed demonstration resource group '$($_.ResourceGroupName)'" -PercentComplete ($resource_group_deleted_count / ($resource_groups.Count) * 100) -Status "Deleting '$($_.ResourceGroupName)'"
             Remove-AzResourceGroup -Name $_.ResourceGroupName -Force -Confirm:$true | Out-Null
             $resource_group_deleted_count++
         }
