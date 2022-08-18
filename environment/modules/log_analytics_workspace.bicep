@@ -1,6 +1,6 @@
 param name string
 param location string
-param environment string = 'SQL Hyperscale Reveaeled demo'
+param environment string = 'SQL Hyperscale Revealed demo'
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' = {
   name: name

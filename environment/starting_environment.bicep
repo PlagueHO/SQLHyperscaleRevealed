@@ -8,7 +8,7 @@ param failoverRegion string = 'East US'
 param resourceNameSuffix string
 
 @description('The envrionment tag that will be used to tag all resources created by this template')
-param environment string = 'SQL Hyperscale Reveaeled demo'
+param environment string = 'SQL Hyperscale Revealed demo'
 
 // Deploy to the subscription scope so we can create resource groups
 targetScope = 'subscription'

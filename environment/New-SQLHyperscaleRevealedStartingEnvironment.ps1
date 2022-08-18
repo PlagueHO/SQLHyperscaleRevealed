@@ -58,7 +58,7 @@ param (
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    $Environment = 'SQL Hyperscale Reveaeled demo'
+    $Environment = 'SQL Hyperscale Revealed demo'
 )
 
 if ($UseRandomResourceNameSuffix) {

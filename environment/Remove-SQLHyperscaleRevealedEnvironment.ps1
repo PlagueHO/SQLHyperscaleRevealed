@@ -15,7 +15,7 @@
 param (
     [Parameter()]
     [ValidateNotNullOrEmpty()]
-    $Environment = 'SQL Hyperscale Reveaeled demo'
+    $Environment = 'SQL Hyperscale Revealed demo'
 )
 
 # These tags are used to deterine which resource groups to delete.
