@@ -77,9 +77,18 @@ $subscriptionId = (Get-AzContext).Subscription.Id
 $userId = (Get-AzAdUser -UserPrincipalName $AadUsernamePrincipalName).Id
 $privateZone = 'privatelink.database.windows.net'
 
+# Update the VNET subnets to add the management and Bastion subnets in case
+# they are needed for the management VM and Azure Bastion - although we won't
+# deploy these resources in this script.
+Write-Verbose -Message "Adding 'management_subnet' and 'AzureBastionSubnet' to the virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..." -Verbose
+$vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $primaryRegionResourceGroupName
+Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.3.0/24' -VirtualNetwork $vnet
+Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.0.4.0/24' -VirtualNetwork $vnet
+$vnet | Set-AzVirtualNetwork | Out-Null
+
 # Create user assigned managed identity for the logical servers in both
 # regions to use to access the Key Vault for the TDE protector key.
-Write-Verbose -Message "Creating user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' for the logical server..." -Verbose
+Write-Verbose -Message "Creating user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' for the logical server ..." -Verbose
 $newAzUserAssignedIdentity_parameters = @{
     Name = "$baseResourcePrefix-$resourceNameSuffix-umi"
     ResourceGroupName = $primaryRegionResourceGroupName
@@ -91,7 +100,7 @@ $userAssignedManagedIdentityId = "/subscriptions/$subscriptionId/resourcegroups/
 
 # Prepare the Key Vault for the TDE protector key and grant access the
 # user assigned managed identity permission to access the key.
-Write-Verbose -Message "Assigning 'Key Vault Crypto Officer' role to the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv'..." -Verbose
+Write-Verbose -Message "Assigning 'Key Vault Crypto Officer' role to the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
 $newAzRoleAssignment_parameters = @{
     ObjectId = $userId
     RoleDefinitionName = 'Key Vault Crypto Officer'
@@ -160,7 +169,7 @@ Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdmini
 
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
-Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv'..." -Verbose
+Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
 $removeAzRoleAssignment_parameters = @{
     ObjectId = $userId
     RoleDefinitionName = 'Key Vault Crypto Officer'
