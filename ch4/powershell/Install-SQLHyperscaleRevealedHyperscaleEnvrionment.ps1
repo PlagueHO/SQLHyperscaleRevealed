@@ -100,13 +100,13 @@ $newAzRoleAssignment_parameters = @{
 New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
 # Generate the TDE protector key in the Key Vault.
-Write-Verbose -Message "Creating the TDE Protector Key '"$baseResourcePrefix-$resourceNameSuffix-tdeprotector"' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
+Write-Verbose -Message "Creating the TDE Protector Key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
 $addAzKeyVaultKey_parameters = @{
     KeyName = "$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
     VaultName = "$baseResourcePrefix-$resourceNameSuffix-kv"
     KeyType = 'RSA'
     Size = 2048
-    Destination = Software
+    Destination = 'Software'
     Tag = $tags
 }
 Add-AzKeyVaultKey  @addAzKeyVaultKey_parameters | Out-Null
@@ -137,7 +137,7 @@ $newAzSqlServer_parameters = @{
     ResourceGroupName = $primaryRegionResourceGroupName
     Location = $primaryRegion
     ServerVersion = '12.0'
-    PublicNetworkAccess = Disabled
+    PublicNetworkAccess = 'Disabled'
     SqlAdministratorCredentials = $sqlAdministratorCredential
     AssignIdentity = $true
     IdentityType = UserAssigned
