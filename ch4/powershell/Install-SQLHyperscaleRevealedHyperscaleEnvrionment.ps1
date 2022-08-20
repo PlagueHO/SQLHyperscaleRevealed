@@ -80,28 +80,28 @@ $privateZone = 'privatelink.database.windows.net'
 # Create user assigned managed identity for the logical servers in both
 # regions to use to access the Key Vault for the TDE protector key.
 Write-Verbose -Message "Creating user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' for the logical server..." -Verbose
-$newAzUserAssignedIdentity_Parameters = @{
+$newAzUserAssignedIdentity_parameters = @{
     Name = "$baseResourcePrefix-$resourceNameSuffix-umi"
     ResourceGroupName = $primaryRegionResourceGroupName
     Location = $primaryRegion
     Tag = $tags
 }
-New-AzUserAssignedIdentity @newAzUserAssignedIdentity_Parameters | Out-Null
+New-AzUserAssignedIdentity @newAzUserAssignedIdentity_parameters | Out-Null
 $userAssignedManagedIdentityId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$baseResourcePrefix-$resourceNameSuffix-umi"
 
 # Prepare the Key Vault for the TDE protector key and grant access the
 # user assigned managed identity permission to access the key.
 Write-Verbose -Message "Assigning 'Key Vault Crypto Officer' role to the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv'..." -Verbose
-$newAzRoleAssignment_Parameters = @{
+$newAzRoleAssignment_parameters = @{
     ObjectId = $userId
     RoleDefinitionName = 'Key Vault Crypto Officer'
     Scope = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
 }
-New-AzRoleAssignment @newAzRoleAssignment_Parameters | Out-Null
+New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
 # Generate the TDE protector key in the Key Vault.
 Write-Verbose -Message "Creating the TDE Protector Key '"$baseResourcePrefix-$resourceNameSuffix-tdeprotector"' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
-$addAzKeyVaultKey_Parameters = @{
+$addAzKeyVaultKey_parameters = @{
     KeyName = "$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
     VaultName = "$baseResourcePrefix-$resourceNameSuffix-kv"
     KeyType = 'RSA'
@@ -109,7 +109,7 @@ $addAzKeyVaultKey_Parameters = @{
     Destination = Software
     Tag = $tags
 }
-Add-AzKeyVaultKey  $addAzKeyVaultKey_Parameters | Out-Null
+Add-AzKeyVaultKey  @addAzKeyVaultKey_parameters | Out-Null
 $tdeProtectorKeyId = (Get-AzKeyVaultKey -KeyName "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" -VaultName "$baseResourcePrefix-$resourceNameSuffix-kv").Id
 
 # Get the Service Principal Id of the user assigned managed identity.
@@ -119,12 +119,12 @@ $servicePrincipalId = (Get-AzADServicePrincipal -DisplayName "$baseResourcePrefi
 # on the key in the Key Vault.
 Write-Verbose -Message "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$resourceNameSuffix-umi' for the key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
 $tdeProtectorKeyResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv/keys/$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
-$newAzRoleAssignment_Parameters = @{
+$newAzRoleAssignment_parameters = @{
     ObjectId =$servicePrincipalId
     RoleDefinitionName = 'Key Vault Crypto Service Encryption User'
     Scope = $tdeProtectorKeyResourceId
 }
-New-AzRoleAssignment $newAzRoleAssignment_Parameters | Out-Null
+New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
 # Create the new SQL logical server without AAD authentication.
 # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
@@ -132,7 +132,7 @@ New-AzRoleAssignment $newAzRoleAssignment_Parameters | Out-Null
 # with the Set-AzSqlServerActiveDirectoryAdministrator command.
 Write-Verbose -Message "Creating logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
 $sqlAdministratorCredential = Get-Credential -Message 'Temporary credential for SQL administrator'
-$newAzSqlServer_Parameters = @{
+$newAzSqlServer_parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
     Location = $primaryRegion
@@ -146,44 +146,44 @@ $newAzSqlServer_Parameters = @{
     KeyId = $tdeProtectorKeyId
     Tag = $tags
 }
-New-AzSqlServer $newAzSqlServer_Parameters | Out-Null
+New-AzSqlServer @newAzSqlServer_parameters | Out-Null
 
 Write-Verbose -Message "Configure administartors of logical server '$primaryRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..." -Verbose
 $sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
-$setAzSqlServerActiveDirectoryAdministrator_Parameters = @{
+$setAzSqlServerActiveDirectoryAdministrator_parameters = @{
     ObjectId = $sqlAdministratorsGroupId
     DisplayName = 'SQL Administrators'
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
 }
-Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_Parameters | Out-Null
+Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
 
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
 Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv'..." -Verbose
-$removeAzRoleAssignment_Parameters = @{
+$removeAzRoleAssignment_parameters = @{
     ObjectId = $userId
     RoleDefinitionName = 'Key Vault Crypto Officer'
     Scope = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
 }
-Remove-AzRoleAssignment @removeAzRoleAssignment_Parameters | Out-Null
+Remove-AzRoleAssignment @removeAzRoleAssignment_parameters | Out-Null
 
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
 Write-Verbose -Message "Creating the private link service connection '$primaryRegionPrefix-$resourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
 $sqlServerResourceId = (Get-AzSqlServer -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
-$newAzPrivateLinkServiceConnection_Parameters = @{
+$newAzPrivateLinkServiceConnection_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-pl"
     PrivateLinkServiceId = $sqlServerResourceId
     GroupId = 'SqlServer'
 }
-$privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_Parameters
+$privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_parameters
 
 # Create the private endpoint for the logical server in the subnet.
 Write-Verbose -Message "Creating the private endpoint '$primaryRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
 $vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $primaryRegionResourceGroupName
 $subnet = Get-AzVirtualNetworkSubnetConfig -VirtualNetwork $vnet -Name 'data_subnet'
-$newAzPrivateEndpoint_Parameters = @{
+$newAzPrivateEndpoint_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-pe"
     ResourceGroupName = $primaryRegionResourceGroupName
     Location = $primaryRegion
@@ -191,34 +191,34 @@ $newAzPrivateEndpoint_Parameters = @{
     PrivateLinkServiceConnection = $privateLinkServiceConnection
     Tag = $tags
 }
-New-AzPrivateEndpoint @newAzPrivateEndpoint_Parameters | Out-Null
+New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
 
 # Create the private DNS zone - this is a global resource so only needs to be done once.
 Write-Verbose -Message "Creating the private DNS Zone '$privateZone' ..." -Verbose
-$newAzPrivateDnsZone_Parameters = @{
+$newAzPrivateDnsZone_parameters = @{
     Name = $privateZone
     ResourceGroupName = $primaryRegionResourceGroupName
 }
-$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_Parameters
+$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
 
 # Connect the private DNS Zone to the primary region VNET.
 Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$primaryRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
-$newAzPrivateDnsVirtualNetworkLink_Parameters = @{
+$newAzPrivateDnsVirtualNetworkLink_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-dnslink"
     ResourceGroupName = $primaryRegionResourceGroupName
     ZoneName = $privateZone
     VirtualNetworkId = $vnet.Id
     Tag = $tags
 }
-New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_Parameters | Out-Null
+New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
 
 # Create the private DNS record for the logical server.
 Write-Verbose -Message "Creating the private DNS Zone Group '$primaryRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$primaryRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
 $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig -Name $privateZone -PrivateDnsZoneId $privateDnsZone.ResourceId
-$newAzPrivateDnsZoneGroup_Parameters = @{
+$newAzPrivateDnsZoneGroup_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-zonegroup"
     ResourceGroupName = $primaryRegionResourceGroupName
     PrivateEndpointName = "$primaryRegionPrefix-$resourceNameSuffix-pe"
     PrivateDnsZoneConfig = $privateDnsZoneConfig
 }
-New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_Parameters | Out-Null
+New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
