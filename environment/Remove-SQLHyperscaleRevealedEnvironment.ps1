@@ -15,6 +15,7 @@
 param (
     [Parameter()]
     [ValidateNotNullOrEmpty()]
+    [System.String]
     $Environment = 'SQL Hyperscale Revealed demo'
 )
 
