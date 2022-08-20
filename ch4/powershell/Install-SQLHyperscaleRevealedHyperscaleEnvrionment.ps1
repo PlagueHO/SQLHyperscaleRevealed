@@ -122,7 +122,13 @@ Add-AzKeyVaultKey  @addAzKeyVaultKey_parameters | Out-Null
 $tdeProtectorKeyId = (Get-AzKeyVaultKey -KeyName "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" -VaultName "$baseResourcePrefix-$resourceNameSuffix-kv").Id
 
 # Get the Service Principal Id of the user assigned managed identity.
+# This may take a few seconds to propagate, so wait for it.
 $servicePrincipalId = (Get-AzADServicePrincipal -DisplayName "$baseResourcePrefix-$resourceNameSuffix-umi").Id
+while ($null -eq $servicePrincipalId) {
+    Write-Verbose -Message "Waiting for the service principal of user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' to be available ..." -Verbose
+    Start-Sleep -Seconds 5
+    $servicePrincipalId = (Get-AzADServicePrincipal -DisplayName "$baseResourcePrefix-$resourceNameSuffix-umi").Id
+}
 
 # Assign the Key Vault Crypto Service Encryption User role to the user assigned managed identity
 # on the key in the Key Vault.
