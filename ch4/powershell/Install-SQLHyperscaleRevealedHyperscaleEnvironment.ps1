@@ -302,7 +302,7 @@ Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
 # DEPLOY FAILOVER REGION
 # ======================================================================================================================
 
-if ($NoFailoverRegion.IsPresent) {
+if (-not $NoFailoverRegion.IsPresent) {
     # Create the failover SQL logical server without AAD authentication.
     # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
     # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
