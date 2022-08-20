@@ -273,7 +273,6 @@ $logicalServerResourceId = (Get-AzSqlServer -ServerName "$primaryRegionPrefix-$r
 $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $logicalServerResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
-    ResourceGroupName = $primaryRegionResourceGroupName
     WorkspaceId = $logAnalyticsWorkspaceId
     Category = 'All'
     Enabled = $true
