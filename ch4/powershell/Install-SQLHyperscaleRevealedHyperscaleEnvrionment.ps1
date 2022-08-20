@@ -368,6 +368,30 @@ $newAzSqlDatabaseSecondary = @{
 }
 New-AzSqlDatabaseSecondary @newAzSqlDatabaseSecondary | Out-Null
 
+# Enable sending failover logical server audit logs to the Log Analytics workspace
+Write-Verbose -Message "Configuring the failover logical server '$failoverRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$failoverRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
+$setAzSqlServerAudit_Parameters = @{
+    ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
+    ResourceGroupName = $failoverRegionResourceGroupName
+    WorkspaceResourceId = $logAnalyticsWorkspaceResourceId
+    LogAnalyticsTargetState = 'Enabled'
+}
+Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
+
+# Enable sending database diagnostic logs to the Log Analytics workspace
+Write-Verbose -Message "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+$logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$failoverRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $failoverRegionResourceGroupName).Id
+$databaseResourceId = (Get-AzSqlDatabase -ServerName "$failoverRegionPrefix-$resourceNameSuffix" -ResourceGroupName $failoverRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
+$SetAzDiagnosticSetting_parameters = @{
+    ResourceId = $databaseResourceId
+    Name = "Send all logs to $failoverRegionPrefix-$resourceNameSuffix-law"
+    WorkspaceId = $logAnalyticsWorkspaceId
+    Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
+    Enabled = $true
+}
+Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
+
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
 Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
