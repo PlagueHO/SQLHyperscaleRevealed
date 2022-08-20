@@ -256,6 +256,7 @@ $setAzSqlServerAudit_Parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
     WorkspaceResourceId = $logAnalyticsWorkspaceResourceId
+    LogAnalyticsTargetState = 'Enabled'
 }
 Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 
