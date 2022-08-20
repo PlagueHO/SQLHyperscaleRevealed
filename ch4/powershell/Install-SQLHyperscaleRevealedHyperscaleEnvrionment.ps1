@@ -129,7 +129,7 @@ $servicePrincipalId = (Get-AzADServicePrincipal -DisplayName "$baseResourcePrefi
 Write-Verbose -Message "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$resourceNameSuffix-umi' for the key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
 $tdeProtectorKeyResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv/keys/$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
 $newAzRoleAssignment_parameters = @{
-    ObjectId =$servicePrincipalId
+    ObjectId = $servicePrincipalId
     RoleDefinitionName = 'Key Vault Crypto Service Encryption User'
     Scope = $tdeProtectorKeyResourceId
 }
@@ -239,6 +239,9 @@ $newAzSqlDatabase_parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
     Edition = 'Hyperscale'
+    Vcore = 2
+    ComputeGeneration = 'Gen5'
+    ComputeModel = 'Provisioned'
     HighAvailabilityReplicaCount = 2
     ZoneRedundant = $true
     BackupStorageRedundancy = 'GeoZone'
@@ -248,11 +251,11 @@ New-AzSqlDatabase @newAzSqlDatabase_parameters
 
 # Enable sending primary logical server audit logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-$logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$primaryRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $primaryRegionResourceGroupName).Id
+$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
 $setAzSqlServerAudit_Parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
-    LogAnalyticsWorkspaceId = $logAnalyticsWorkspaceId
+    WorkspaceResourceId = $logAnalyticsWorkspaceResourceId
 }
 Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 
@@ -264,7 +267,6 @@ $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $logicalServerResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
     ResourceGroupName = $primaryRegionResourceGroupName
-    ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     LogAnalyticsWorkspaceId = $logAnalyticsWorkspaceId
     Category = 'All'
     Enabled = $true
