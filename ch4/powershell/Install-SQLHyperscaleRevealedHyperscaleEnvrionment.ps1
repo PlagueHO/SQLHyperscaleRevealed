@@ -76,6 +76,7 @@ $failoverRegionResourceGroupName = "$failoverRegionPrefix-$resourceNameSuffix-rg
 $subscriptionId = (Get-AzContext).Subscription.Id
 $userId = (Get-AzAdUser -UserPrincipalName $AadUsernamePrincipalName).Id
 $privateZone = 'privatelink.database.windows.net'
+$sqlAdministratorCredential = Get-Credential -Message 'Temporary credential for SQL administrator'
 
 # Update the VNET subnets to add the management and Bastion subnets in case
 # they are needed for the management VM and Azure Bastion - although we won't
@@ -85,6 +86,14 @@ $vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vne
 Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.3.0/24' -VirtualNetwork $vnet | Out-Null
 Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.0.4.0/24' -VirtualNetwork $vnet | Out-Null
 $vnet | Set-AzVirtualNetwork | Out-Null
+
+# Create the private DNS zone - this is a global resource so only needs to be done once.
+Write-Verbose -Message "Creating the private DNS Zone for '$privateZone' ..." -Verbose
+$newAzPrivateDnsZone_parameters = @{
+    Name = $privateZone
+    ResourceGroupName = $primaryRegionResourceGroupName
+}
+$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
 
 # Create user assigned managed identity for the logical servers in both
 # regions to use to access the Key Vault for the TDE protector key.
@@ -141,12 +150,11 @@ $newAzRoleAssignment_parameters = @{
 }
 New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
-# Create the new SQL logical server without AAD authentication.
+# Create the primary SQL logical server without AAD authentication.
 # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
 # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
 # with the Set-AzSqlServerActiveDirectoryAdministrator command.
 Write-Verbose -Message "Creating logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
-$sqlAdministratorCredential = Get-Credential -Message 'Temporary credential for SQL administrator'
 $newAzSqlServer_parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
@@ -173,16 +181,6 @@ $setAzSqlServerActiveDirectoryAdministrator_parameters = @{
 }
 Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
 
-# Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
-# retain this access. Recommended to use Azure AD PIM to elevate temporarily.
-Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
-$removeAzRoleAssignment_parameters = @{
-    ObjectId = $userId
-    RoleDefinitionName = 'Key Vault Crypto Officer'
-    Scope = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
-}
-Remove-AzRoleAssignment @removeAzRoleAssignment_parameters | Out-Null
-
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
 Write-Verbose -Message "Creating the private link service connection '$primaryRegionPrefix-$resourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
@@ -207,14 +205,6 @@ $newAzPrivateEndpoint_parameters = @{
     Tag = $tags
 }
 New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
-
-# Create the private DNS zone - this is a global resource so only needs to be done once.
-Write-Verbose -Message "Creating the private DNS Zone '$privateZone' ..." -Verbose
-$newAzPrivateDnsZone_parameters = @{
-    Name = $privateZone
-    ResourceGroupName = $primaryRegionResourceGroupName
-}
-$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
 
 # Connect the private DNS Zone to the primary region VNET.
 Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$primaryRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
@@ -278,3 +268,91 @@ $SetAzDiagnosticSetting_parameters = @{
     Enabled = $true
 }
 Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
+
+# Create the failover SQL logical server without AAD authentication.
+# Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
+# is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
+# with the Set-AzSqlServerActiveDirectoryAdministrator command.
+Write-Verbose -Message "Creating logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+$newAzSqlServer_parameters = @{
+    ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
+    ResourceGroupName = $failoverRegionResourceGroupName
+    Location = $failoverRegion
+    ServerVersion = '12.0'
+    PublicNetworkAccess = 'Disabled'
+    SqlAdministratorCredentials = $sqlAdministratorCredential
+    AssignIdentity = $true
+    IdentityType = 'UserAssigned'
+    UserAssignedIdentityId = $userAssignedManagedIdentityId
+    PrimaryUserAssignedIdentityId = $userAssignedManagedIdentityId
+    KeyId = $tdeProtectorKeyId
+    Tag = $tags
+}
+New-AzSqlServer @newAzSqlServer_parameters | Out-Null
+
+Write-Verbose -Message "Configure administartors of logical server '$failoverRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..." -Verbose
+$sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
+$setAzSqlServerActiveDirectoryAdministrator_parameters = @{
+    ObjectId = $sqlAdministratorsGroupId
+    DisplayName = 'SQL Administrators'
+    ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
+    ResourceGroupName = $failoverRegionResourceGroupName
+}
+Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
+
+# Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
+# Create the private link service connection
+Write-Verbose -Message "Creating the private link service connection '$failoverRegionPrefix-$resourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+$sqlServerResourceId = (Get-AzSqlServer -ServerName "$failoverRegionPrefix-$resourceNameSuffix" -ResourceGroupName $failoverRegionResourceGroupName).ResourceId
+$newAzPrivateLinkServiceConnection_parameters = @{
+    Name = "$failoverRegionPrefix-$resourceNameSuffix-pl"
+    PrivateLinkServiceId = $sqlServerResourceId
+    GroupId = 'SqlServer'
+}
+$privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_parameters
+
+# Create the private endpoint for the logical server in the subnet.
+Write-Verbose -Message "Creating the private endpoint '$failoverRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+$vnet = Get-AzVirtualNetwork -Name "$failoverRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $failoverRegionResourceGroupName
+$subnet = Get-AzVirtualNetworkSubnetConfig -VirtualNetwork $vnet -Name 'data_subnet'
+$newAzPrivateEndpoint_parameters = @{
+    Name = "$failoverRegionPrefix-$resourceNameSuffix-pe"
+    ResourceGroupName = $failoverRegionResourceGroupName
+    Location = $failoverRegion
+    Subnet = $subnet
+    PrivateLinkServiceConnection = $privateLinkServiceConnection
+    Tag = $tags
+}
+New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
+
+# Connect the private DNS Zone to the failover region VNET.
+Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
+$newAzPrivateDnsVirtualNetworkLink_parameters = @{
+    Name = "$failoverRegionPrefix-$resourceNameSuffix-dnslink"
+    ResourceGroupName = $failoverRegionResourceGroupName
+    ZoneName = $privateZone
+    VirtualNetworkId = $vnet.Id
+    Tag = $tags
+}
+New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
+
+# Create the private DNS record for the logical server.
+Write-Verbose -Message "Creating the private DNS Zone Group '$failoverRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
+$privateDnsZoneConfig = New-AzPrivateDnsZoneConfig -Name $privateZone -PrivateDnsZoneId $privateDnsZone.ResourceId
+$newAzPrivateDnsZoneGroup_parameters = @{
+    Name = "$failoverRegionPrefix-$resourceNameSuffix-zonegroup"
+    ResourceGroupName = $failoverRegionResourceGroupName
+    PrivateEndpointName = "$failoverRegionPrefix-$resourceNameSuffix-pe"
+    PrivateDnsZoneConfig = $privateDnsZoneConfig
+}
+New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
+
+# Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
+# retain this access. Recommended to use Azure AD PIM to elevate temporarily.
+Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
+$removeAzRoleAssignment_parameters = @{
+    ObjectId = $userId
+    RoleDefinitionName = 'Key Vault Crypto Officer'
+    Scope = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
+}
+Remove-AzRoleAssignment @removeAzRoleAssignment_parameters | Out-Null
