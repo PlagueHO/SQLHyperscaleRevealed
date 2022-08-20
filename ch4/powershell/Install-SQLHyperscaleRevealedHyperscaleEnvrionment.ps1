@@ -231,3 +231,42 @@ $newAzPrivateDnsZoneGroup_parameters = @{
     PrivateDnsZoneConfig = $privateDnsZoneConfig
 }
 New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
+
+# Create the hyperscale database in the primary region
+Write-Verbose -Message "Creating the primary hyperscale database in the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
+$newAzSqlDatabase_parameters = @{
+    DatabaseName = 'hyperscaledb'
+    ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
+    ResourceGroupName = $primaryRegionResourceGroupName
+    Edition = 'Hyperscale'
+    HighAvailabilityReplicaCount = 2
+    ZoneRedundant = $true
+    BackupStorageRedundancy = 'GeoZone'
+    Tags = $tags
+}
+New-AzSqlDatabase @newAzSqlDatabase_parameters
+
+# Enable sending primary logical server audit logs to the Log Analytics workspace
+Write-Verbose -Message "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+$logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$primaryRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $primaryRegionResourceGroupName).Id
+$setAzSqlServerAudit_Parameters = @{
+    ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
+    ResourceGroupName = $primaryRegionResourceGroupName
+    LogAnalyticsWorkspaceId = $logAnalyticsWorkspaceId
+}
+Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
+
+# Enable sending database diagnostic logs to the Log Analytics workspace
+Write-Verbose -Message "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+$logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$primaryRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $primaryRegionResourceGroupName).Id
+$logicalServerResourceId = (Get-AzSqlServer -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
+$SetAzDiagnosticSetting_parameters = @{
+    ResourceId = $logicalServerResourceId
+    Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
+    ResourceGroupName = $primaryRegionResourceGroupName
+    ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
+    LogAnalyticsWorkspaceId = $logAnalyticsWorkspaceId
+    Category = 'All'
+    Enabled = $true
+}
+Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
