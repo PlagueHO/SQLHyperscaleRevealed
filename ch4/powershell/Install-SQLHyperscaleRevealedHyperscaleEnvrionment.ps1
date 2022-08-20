@@ -82,8 +82,8 @@ $privateZone = 'privatelink.database.windows.net'
 # deploy these resources in this script.
 Write-Verbose -Message "Adding 'management_subnet' and 'AzureBastionSubnet' to the virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..." -Verbose
 $vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $primaryRegionResourceGroupName
-Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.3.0/24' -VirtualNetwork $vnet
-Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.0.4.0/24' -VirtualNetwork $vnet
+Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.3.0/24' -VirtualNetwork $vnet | Out-Null
+Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.0.4.0/24' -VirtualNetwork $vnet | Out-Null
 $vnet | Set-AzVirtualNetwork | Out-Null
 
 # Create user assigned managed identity for the logical servers in both
