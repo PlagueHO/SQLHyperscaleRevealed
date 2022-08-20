@@ -87,14 +87,6 @@ Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.
 Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.0.4.0/24' -VirtualNetwork $vnet | Out-Null
 $vnet | Set-AzVirtualNetwork | Out-Null
 
-# Create the private DNS zone - this is a global resource so only needs to be done once.
-Write-Verbose -Message "Creating the private DNS Zone for '$privateZone' ..." -Verbose
-$newAzPrivateDnsZone_parameters = @{
-    Name = $privateZone
-    ResourceGroupName = $primaryRegionResourceGroupName
-}
-$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
-
 # Create user assigned managed identity for the logical servers in both
 # regions to use to access the Key Vault for the TDE protector key.
 Write-Verbose -Message "Creating user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' for the logical server ..." -Verbose
@@ -206,6 +198,14 @@ $newAzPrivateEndpoint_parameters = @{
 }
 New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
 
+# Create the private DNS zone.
+Write-Verbose -Message "Creating the private DNS Zone for '$privateZone' in resource group '$primaryRegionResourceGroupName' ..." -Verbose
+$newAzPrivateDnsZone_parameters = @{
+    Name = $privateZone
+    ResourceGroupName = $primaryRegionResourceGroupName
+}
+$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
+
 # Connect the private DNS Zone to the primary region VNET.
 Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$primaryRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
 $newAzPrivateDnsVirtualNetworkLink_parameters = @{
@@ -259,9 +259,9 @@ Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 # Enable sending database diagnostic logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
 $logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$primaryRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $primaryRegionResourceGroupName).Id
-$logicalServerResourceId = (Get-AzSqlServer -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
+$databaseResourceId = (Get-AzSqlDatabase -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
 $SetAzDiagnosticSetting_parameters = @{
-    ResourceId = $logicalServerResourceId
+    ResourceId = $databaseResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
     WorkspaceId = $logAnalyticsWorkspaceId
     Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
@@ -325,6 +325,14 @@ $newAzPrivateEndpoint_parameters = @{
 }
 New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
 
+# Create the private DNS zone.
+Write-Verbose -Message "Creating the private DNS Zone for '$privateZone' in resource group '$failoverRegionResourceGroupName' ..." -Verbose
+$newAzPrivateDnsZone_parameters = @{
+    Name = $privateZone
+    ResourceGroupName = $failoverRegionResourceGroupName
+}
+$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
+
 # Connect the private DNS Zone to the failover region VNET.
 Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
 $newAzPrivateDnsVirtualNetworkLink_parameters = @{
@@ -346,6 +354,19 @@ $newAzPrivateDnsZoneGroup_parameters = @{
     PrivateDnsZoneConfig = $privateDnsZoneConfig
 }
 New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
+
+# Establish the active geo-replication from the primary region to the failover region.
+Write-Verbose -Message "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$resourceNameSuffix' to '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+$newAzSqlDatabaseSecondary = @{
+    ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
+    ResourceGroupName = $failoverRegionResourceGroupName
+    PartnerServerName  = "$primaryRegionPrefix-$resourceNameSuffix"
+    PartnerServerResourceGroupName = $primaryRegionResourceGroupName
+    AllowConnections = "All"
+    SecondaryVCore = 2
+    SecondaryComputeGeneration = 'Gen5'
+}
+New-AzSqlDatabaseSecondary @newAzSqlDatabaseSecondary | Out-Null
 
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
