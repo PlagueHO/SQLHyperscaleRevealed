@@ -274,7 +274,7 @@ $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $logicalServerResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
     WorkspaceId = $logAnalyticsWorkspaceId
-    Category = 'All'
+    Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
     Enabled = $true
 }
 Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
