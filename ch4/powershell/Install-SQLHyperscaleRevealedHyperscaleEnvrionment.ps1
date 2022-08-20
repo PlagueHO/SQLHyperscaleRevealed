@@ -247,7 +247,7 @@ $newAzSqlDatabase_parameters = @{
     BackupStorageRedundancy = 'GeoZone'
     Tags = $tags
 }
-New-AzSqlDatabase @newAzSqlDatabase_parameters
+New-AzSqlDatabase @newAzSqlDatabase_parameters | Out-Null
 
 # Enable sending primary logical server audit logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
@@ -267,7 +267,7 @@ $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $logicalServerResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
     ResourceGroupName = $primaryRegionResourceGroupName
-    LogAnalyticsWorkspaceId = $logAnalyticsWorkspaceId
+    WorkspaceId = $logAnalyticsWorkspaceId
     Category = 'All'
     Enabled = $true
 }
