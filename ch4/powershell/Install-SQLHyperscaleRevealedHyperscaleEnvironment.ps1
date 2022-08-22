@@ -287,14 +287,15 @@ Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 
 # Enable sending database diagnostic logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-$logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$primaryRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $primaryRegionResourceGroupName).Id
+$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
 $databaseResourceId = (Get-AzSqlDatabase -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
 $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $databaseResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
-    WorkspaceId = $logAnalyticsWorkspaceId
+    WorkspaceId = $logAnalyticsWorkspaceResourceId
     Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
     Enabled = $true
+    EnableLog = $true
 }
 Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
 
@@ -415,14 +416,15 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Enable sending database diagnostic logs to the Log Analytics workspace
     Write-Verbose -Message "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-    $logAnalyticsWorkspaceId = (Get-AzOperationalInsightsWorkspace -Name "$failoverRegionPrefix-$resourceNameSuffix-law" -ResourceGroupName $failoverRegionResourceGroupName).Id
+    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$failoverRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
     $databaseResourceId = (Get-AzSqlDatabase -ServerName "$failoverRegionPrefix-$resourceNameSuffix" -ResourceGroupName $failoverRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
     $SetAzDiagnosticSetting_parameters = @{
         ResourceId = $databaseResourceId
         Name = "Send all logs to $failoverRegionPrefix-$resourceNameSuffix-law"
-        WorkspaceId = $logAnalyticsWorkspaceId
+        WorkspaceId = $logAnalyticsWorkspaceResourceId
         Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
         Enabled = $true
+        EnableLog = $true
     }
     Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
 }
