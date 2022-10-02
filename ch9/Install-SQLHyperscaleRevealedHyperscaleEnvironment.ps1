@@ -397,7 +397,7 @@ if (-not $NoFailoverRegion.IsPresent) {
         ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
         ResourceGroupName = $failoverRegionResourceGroupName
         PartnerServerName  = "$primaryRegionPrefix-$resourceNameSuffix"
-        PartnerServerResourceGroupName = $primaryRegionResourceGroupName
+        PartnerResourceGroupName = $primaryRegionResourceGroupName
         AllowConnections = "All"
         SecondaryVCore = 2
         SecondaryComputeGeneration = 'Gen5'
