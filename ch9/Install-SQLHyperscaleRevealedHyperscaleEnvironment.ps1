@@ -117,7 +117,10 @@ $newAzUserAssignedIdentity_parameters = @{
     Tag = $tags
 }
 New-AzUserAssignedIdentity @newAzUserAssignedIdentity_parameters | Out-Null
-$userAssignedManagedIdentityId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$baseResourcePrefix-$resourceNameSuffix-umi"
+$userAssignedManagedIdentityId = "/subscriptions/$subscriptionId" + `
+    "/resourcegroups/$primaryRegionResourceGroupName" + `
+    "/providers/Microsoft.ManagedIdentity" + `
+    "/userAssignedIdentities/$baseResourcePrefix-$resourceNameSuffix-umi"
 
 # ======================================================================================================================
 # PREPARE CUSTOMER-MANAGED TDE PROTECTOR KEY IN KEY VAULT
@@ -158,7 +161,11 @@ while ($null -eq $servicePrincipalId) {
 # Assign the Key Vault Crypto Service Encryption User role to the user assigned managed identity
 # on the key in the Key Vault.
 Write-Verbose -Message "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$resourceNameSuffix-umi' for the key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
-$tdeProtectorKeyResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv/keys/$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
+$tdeProtectorKeyResourceId = "/subscriptions/$subscriptionId" + `
+    "/resourcegroups/$primaryRegionResourceGroupName" + `
+    "/providers/Microsoft.KeyVault" + `
+    "/vaults/$baseResourcePrefix-$resourceNameSuffix-kv" + `
+    "/keys/$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
 $newAzRoleAssignment_parameters = @{
     ObjectId = $servicePrincipalId
     RoleDefinitionName = 'Key Vault Crypto Service Encryption User'
@@ -289,7 +296,10 @@ New-AzSqlDatabase @newAzSqlDatabase_parameters | Out-Null
 
 # Enable sending primary logical server audit logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
+$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
+    "/resourcegroups/$primaryRegionResourceGroupName" + `
+    "/providers/microsoft.operationalinsights" + `
+    "/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
 $setAzSqlServerAudit_Parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
@@ -300,7 +310,10 @@ Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 
 # Enable sending database diagnostic logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
+$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
+    "/resourcegroups/$primaryRegionResourceGroupName" + `
+    "/providers/microsoft.operationalinsights" + `
+    "/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
 $databaseResourceId = (Get-AzSqlDatabase -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
 $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $databaseResourceId
@@ -435,7 +448,10 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Enable sending failover logical server audit logs to the Log Analytics workspace
     Write-Verbose -Message "Configuring the failover logical server '$failoverRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$failoverRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
+    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
+        "/resourcegroups/$failoverRegionResourceGroupName" + `
+        "/providers/microsoft.operationalinsights" + `
+        "/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
     $setAzSqlServerAudit_Parameters = @{
         ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
         ResourceGroupName = $failoverRegionResourceGroupName
@@ -446,7 +462,10 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Enable sending database diagnostic logs to the Log Analytics workspace
     Write-Verbose -Message "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
-    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId/resourcegroups/$failoverRegionResourceGroupName/providers/microsoft.operationalinsights/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
+    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
+        "/resourcegroups/$failoverRegionResourceGroupName" + `
+        "/providers/microsoft.operationalinsights" + `
+        "/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
     $databaseResourceId = (Get-AzSqlDatabase -ServerName "$failoverRegionPrefix-$resourceNameSuffix" -ResourceGroupName $failoverRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
     $SetAzDiagnosticSetting_parameters = @{
         ResourceId = $databaseResourceId
@@ -466,9 +485,13 @@ if (-not $NoFailoverRegion.IsPresent) {
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
 Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUsernamePrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
+$roleAssignmentScope = "/subscriptions/$subscriptionId" + `
+    "/resourcegroups/$primaryRegionResourceGroupName" + `
+    "/providers/Microsoft.KeyVault" + `
+    "/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
 $removeAzRoleAssignment_parameters = @{
     ObjectId = $userId
     RoleDefinitionName = 'Key Vault Crypto Officer'
-    Scope = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
+    Scope = $roleAssignmentScope
 }
 Remove-AzRoleAssignment @removeAzRoleAssignment_parameters | Out-Null
