@@ -167,7 +167,7 @@ $newAzRoleAssignment_parameters = @{
 New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
 # ======================================================================================================================
-# DEPLOY PRIMARY REGION
+# DEPLOY LOGICAL SERVER IN PRIMARY REGION
 # ======================================================================================================================
 
 # Create the primary SQL logical server without AAD authentication.
@@ -202,6 +202,10 @@ $setAzSqlServerActiveDirectoryAdministrator_parameters = @{
     ResourceGroupName = $primaryRegionResourceGroupName
 }
 Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
+
+# ======================================================================================================================
+# CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
+# ======================================================================================================================
 
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
@@ -258,6 +262,10 @@ $newAzPrivateDnsZoneGroup_parameters = @{
 }
 New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
 
+# ======================================================================================================================
+# CREATE HYPERSCALE DATABASE IN PRIMARY REGION
+# ======================================================================================================================
+
 # Create the hyperscale database in the primary region
 Write-Verbose -Message "Creating the primary hyperscale database in the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
 $newAzSqlDatabase_parameters = @{
@@ -274,6 +282,10 @@ $newAzSqlDatabase_parameters = @{
     Tags = $tags
 }
 New-AzSqlDatabase @newAzSqlDatabase_parameters | Out-Null
+
+# ======================================================================================================================
+# CONFIGURE DIAGNOSTIC AND AUDIT LOGS TO SEND TO LOG ANALYTICS
+# ======================================================================================================================
 
 # Enable sending primary logical server audit logs to the Log Analytics workspace
 Write-Verbose -Message "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
@@ -300,11 +312,12 @@ $SetAzDiagnosticSetting_parameters = @{
 }
 Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
 
-# ======================================================================================================================
-# DEPLOY FAILOVER REGION
-# ======================================================================================================================
 
 if (-not $NoFailoverRegion.IsPresent) {
+    # ======================================================================================================================
+    # DEPLOY LOGICAL SERVER IN FAILOVER REGION
+    # ======================================================================================================================
+
     # Create the failover SQL logical server without AAD authentication.
     # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
     # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
@@ -335,6 +348,10 @@ if (-not $NoFailoverRegion.IsPresent) {
         ResourceGroupName = $failoverRegionResourceGroupName
     }
     Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
+
+    # ======================================================================================================================
+    # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
+    # ======================================================================================================================
 
     # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
     # Create the private link service connection
@@ -391,18 +408,30 @@ if (-not $NoFailoverRegion.IsPresent) {
     }
     New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
 
+    # ======================================================================================================================
+    # CREATE REPLICA HYPERSCALE DATABASE IN FAILOVER REGION
+    # ======================================================================================================================
+
     # Establish the active geo-replication from the primary region to the failover region.
     Write-Verbose -Message "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$resourceNameSuffix' to '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
     $newAzSqlDatabaseSecondary = @{
-        ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
-        ResourceGroupName = $failoverRegionResourceGroupName
-        PartnerServerName  = "$primaryRegionPrefix-$resourceNameSuffix"
-        PartnerResourceGroupName = $primaryRegionResourceGroupName
-        AllowConnections = "All"
+        DatabaseName = 'hyperscaledb'
+        ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
+        ResourceGroupName = $primaryRegionResourceGroupName
+        PartnerDatabaseName = 'hyperscaledb'
+        PartnerServerName  = "$failoverRegionPrefix-$resourceNameSuffix"
+        PartnerResourceGroupName = $failoverRegionResourceGroupName
+        SecondaryType = 'Geo'
+        AllowConnections = 'All'
         SecondaryVCore = 2
         SecondaryComputeGeneration = 'Gen5'
+        ZoneRedundant = $false
     }
     New-AzSqlDatabaseSecondary @newAzSqlDatabaseSecondary | Out-Null
+
+    # ======================================================================================================================
+    # CONFIGURE DIAGNOSTIC AND AUDIT LOGS TO SEND TO LOG ANALYTICS
+    # ======================================================================================================================
 
     # Enable sending failover logical server audit logs to the Log Analytics workspace
     Write-Verbose -Message "Configuring the failover logical server '$failoverRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
