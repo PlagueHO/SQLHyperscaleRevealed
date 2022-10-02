@@ -90,7 +90,7 @@ $privateZone = 'privatelink.database.windows.net'
 
 # Update the VNET subnets to add the management and Bastion subnets in case
 # they are needed for the management VM and Azure Bastion - although we won't
-# deploy these resources in this script.
+# deploy these resources in this script. This is just here for convenience.
 Write-Verbose -Message "Adding 'management_subnet' and 'AzureBastionSubnet' to the primary virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..." -Verbose
 $vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $primaryRegionResourceGroupName
 Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.3.0/24' -VirtualNetwork $vnet | Out-Null
