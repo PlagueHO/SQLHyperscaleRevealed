@@ -83,7 +83,6 @@ $failoverRegionResourceGroupName = "$failoverRegionPrefix-$resourceNameSuffix-rg
 $subscriptionId = (Get-AzContext).Subscription.Id
 $userId = (Get-AzAdUser -UserPrincipalName $AadUsernamePrincipalName).Id
 $privateZone = 'privatelink.database.windows.net'
-$sqlAdministratorCredential = Get-Credential -Message 'Temporary credential for SQL administrator'
 
 # ======================================================================================================================
 # VIRTUAL NETWORK PREPARATION FOR MANAGEMENT AND BASTION SUBNETS
@@ -176,6 +175,8 @@ New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
 # with the Set-AzSqlServerActiveDirectoryAdministrator command.
 Write-Verbose -Message "Creating logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
+$sqlAdministratorPassword = -join ((48..57) + (97..122) | Get-Random -Count 12 | ForEach-Object { [char]$_} )
+$sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
 $newAzSqlServer_parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
