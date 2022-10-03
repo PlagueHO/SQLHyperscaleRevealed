@@ -222,7 +222,9 @@ Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdmini
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
 Write-Verbose -Message "Creating the private link service connection '$primaryRegionPrefix-$resourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
-$sqlServerResourceId = (Get-AzSqlServer -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
+$sqlServerResourceId = (Get-AzSqlServer `
+    -ServerName "$primaryRegionPrefix-$resourceNameSuffix" `
+    -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
 $newAzPrivateLinkServiceConnection_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-pl"
     PrivateLinkServiceId = $sqlServerResourceId
@@ -232,8 +234,12 @@ $privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivate
 
 # Create the private endpoint for the logical server in the subnet.
 Write-Verbose -Message "Creating the private endpoint '$primaryRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
-$vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $primaryRegionResourceGroupName
-$subnet = Get-AzVirtualNetworkSubnetConfig -VirtualNetwork $vnet -Name 'data_subnet'
+$vnet = Get-AzVirtualNetwork `
+    -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" `
+    -ResourceGroupName $primaryRegionResourceGroupName
+$subnet = Get-AzVirtualNetworkSubnetConfig `
+    -VirtualNetwork $vnet `
+    -Name 'data_subnet'
 $newAzPrivateEndpoint_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-pe"
     ResourceGroupName = $primaryRegionResourceGroupName
