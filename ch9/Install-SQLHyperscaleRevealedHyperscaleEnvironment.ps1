@@ -132,7 +132,10 @@ Write-Verbose -Message "Assigning 'Key Vault Crypto Officer' role to the user '$
 $newAzRoleAssignment_parameters = @{
     ObjectId = $userId
     RoleDefinitionName = 'Key Vault Crypto Officer'
-    Scope = "/subscriptions/$subscriptionId/resourcegroups/$primaryRegionResourceGroupName/providers/Microsoft.KeyVault/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
+    Scope = "/subscriptions/$subscriptionId" + `
+        "/resourcegroups/$primaryRegionResourceGroupName" + `
+        "/providers/Microsoft.KeyVault" + `
+        "/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
 }
 New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
