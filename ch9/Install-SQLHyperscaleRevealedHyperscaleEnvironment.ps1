@@ -149,8 +149,10 @@ $addAzKeyVaultKey_parameters = @{
     Destination = 'Software'
     Tag = $tags
 }
-Add-AzKeyVaultKey  @addAzKeyVaultKey_parameters | Out-Null
-$tdeProtectorKeyId = (Get-AzKeyVaultKey -KeyName "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" -VaultName "$baseResourcePrefix-$resourceNameSuffix-kv").Id
+Add-AzKeyVaultKey @addAzKeyVaultKey_parameters | Out-Null
+$tdeProtectorKeyId = (Get-AzKeyVaultKey `
+    -KeyName "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" `
+    -VaultName "$baseResourcePrefix-$resourceNameSuffix-kv").Id
 
 # Get the Service Principal Id of the user assigned managed identity.
 # This may take a few seconds to propagate, so wait for it.
