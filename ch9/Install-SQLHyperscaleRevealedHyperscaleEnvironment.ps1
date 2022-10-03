@@ -271,7 +271,9 @@ New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters
 
 # Create the private DNS record for the logical server.
 Write-Verbose -Message "Creating the private DNS Zone Group '$primaryRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$primaryRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
-$privateDnsZoneConfig = New-AzPrivateDnsZoneConfig -Name $privateZone -PrivateDnsZoneId $privateDnsZone.ResourceId
+$privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
+    -Name $privateZone `
+    -PrivateDnsZoneId $privateDnsZone.ResourceId
 $newAzPrivateDnsZoneGroup_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-zonegroup"
     ResourceGroupName = $primaryRegionResourceGroupName
@@ -325,7 +327,10 @@ $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
     "/resourcegroups/$primaryRegionResourceGroupName" + `
     "/providers/microsoft.operationalinsights" + `
     "/workspaces/$primaryRegionPrefix-$resourceNameSuffix-law"
-$databaseResourceId = (Get-AzSqlDatabase -ServerName "$primaryRegionPrefix-$resourceNameSuffix" -ResourceGroupName $primaryRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
+$databaseResourceId = (Get-AzSqlDatabase `
+    -ServerName "$primaryRegionPrefix-$resourceNameSuffix" `
+    -ResourceGroupName $primaryRegionResourceGroupName `
+    -DatabaseName 'hyperscaledb').ResourceId
 $SetAzDiagnosticSetting_parameters = @{
     ResourceId = $databaseResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
@@ -380,7 +385,9 @@ if (-not $NoFailoverRegion.IsPresent) {
     # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
     # Create the private link service connection
     Write-Verbose -Message "Creating the private link service connection '$failoverRegionPrefix-$resourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
-    $sqlServerResourceId = (Get-AzSqlServer -ServerName "$failoverRegionPrefix-$resourceNameSuffix" -ResourceGroupName $failoverRegionResourceGroupName).ResourceId
+    $sqlServerResourceId = (Get-AzSqlServer `
+        -ServerName "$failoverRegionPrefix-$resourceNameSuffix" `
+        -ResourceGroupName $failoverRegionResourceGroupName).ResourceId
     $newAzPrivateLinkServiceConnection_parameters = @{
         Name = "$failoverRegionPrefix-$resourceNameSuffix-pl"
         PrivateLinkServiceId = $sqlServerResourceId
@@ -390,8 +397,12 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Create the private endpoint for the logical server in the subnet.
     Write-Verbose -Message "Creating the private endpoint '$failoverRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
-    $vnet = Get-AzVirtualNetwork -Name "$failoverRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $failoverRegionResourceGroupName
-    $subnet = Get-AzVirtualNetworkSubnetConfig -VirtualNetwork $vnet -Name 'data_subnet'
+    $vnet = Get-AzVirtualNetwork `
+        -Name "$failoverRegionPrefix-$resourceNameSuffix-vnet" `
+        -ResourceGroupName $failoverRegionResourceGroupName
+    $subnet = Get-AzVirtualNetworkSubnetConfig `
+        -VirtualNetwork $vnet `
+        -Name 'data_subnet'
     $newAzPrivateEndpoint_parameters = @{
         Name = "$failoverRegionPrefix-$resourceNameSuffix-pe"
         ResourceGroupName = $failoverRegionResourceGroupName
@@ -423,7 +434,9 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Create the private DNS record for the logical server.
     Write-Verbose -Message "Creating the private DNS Zone Group '$failoverRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
-    $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig -Name $privateZone -PrivateDnsZoneId $privateDnsZone.ResourceId
+    $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
+        -Name $privateZone `
+        -PrivateDnsZoneId $privateDnsZone.ResourceId
     $newAzPrivateDnsZoneGroup_parameters = @{
         Name = "$failoverRegionPrefix-$resourceNameSuffix-zonegroup"
         ResourceGroupName = $failoverRegionResourceGroupName
@@ -477,7 +490,10 @@ if (-not $NoFailoverRegion.IsPresent) {
         "/resourcegroups/$failoverRegionResourceGroupName" + `
         "/providers/microsoft.operationalinsights" + `
         "/workspaces/$failoverRegionPrefix-$resourceNameSuffix-law"
-    $databaseResourceId = (Get-AzSqlDatabase -ServerName "$failoverRegionPrefix-$resourceNameSuffix" -ResourceGroupName $failoverRegionResourceGroupName -DatabaseName 'hyperscaledb').ResourceId
+    $databaseResourceId = (Get-AzSqlDatabase `
+        -ServerName "$failoverRegionPrefix-$resourceNameSuffix" `
+        -ResourceGroupName $failoverRegionResourceGroupName `
+        -DatabaseName 'hyperscaledb').ResourceId
     $SetAzDiagnosticSetting_parameters = @{
         ResourceId = $databaseResourceId
         Name = "Send all logs to $failoverRegionPrefix-$resourceNameSuffix-law"
