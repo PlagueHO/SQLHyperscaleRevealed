@@ -341,7 +341,6 @@ $SetAzDiagnosticSetting_parameters = @{
 }
 Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
 
-
 if (-not $NoFailoverRegion.IsPresent) {
     # ======================================================================================================================
     # DEPLOY LOGICAL SERVER IN FAILOVER REGION
