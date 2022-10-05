@@ -456,14 +456,14 @@ if (-not $NoFailoverRegion.IsPresent) {
         DatabaseName = 'hyperscaledb'
         ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
         ResourceGroupName = $primaryRegionResourceGroupName
-        PartnerDatabaseName = 'hyperscaledb'
         PartnerServerName = "$failoverRegionPrefix-$resourceNameSuffix"
         PartnerResourceGroupName = $failoverRegionResourceGroupName
         SecondaryType = 'Geo'
-        AllowConnections = 'All'
         SecondaryVCore = 2
         SecondaryComputeGeneration = 'Gen5'
+        HighAvailabilityReplicaCount = 1
         ZoneRedundant = $false
+        AllowConnections = 'All'
     }
     New-AzSqlDatabaseSecondary @newAzSqlDatabaseSecondary | Out-Null
 
