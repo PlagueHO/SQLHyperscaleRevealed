@@ -269,7 +269,7 @@ $newAzPrivateDnsVirtualNetworkLink_parameters = @{
 }
 New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
 
-# Create the private DNS record for the logical server.
+# Create the DNS zone group for the private endpoint.
 Write-Verbose -Message "Creating the private DNS Zone Group '$primaryRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$primaryRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
 $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
     -Name $privateZone `
@@ -433,7 +433,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     }
     New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
 
-    # Create the private DNS record for the logical server.
+    # Create the DNS zone group for the private endpoint.
     Write-Verbose -Message "Creating the private DNS Zone Group '$failoverRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
     $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
         -Name $privateZone `
