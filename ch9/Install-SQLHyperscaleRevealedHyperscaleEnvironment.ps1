@@ -457,7 +457,7 @@ if (-not $NoFailoverRegion.IsPresent) {
         ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
         ResourceGroupName = $primaryRegionResourceGroupName
         PartnerDatabaseName = 'hyperscaledb'
-        PartnerServerName  = "$failoverRegionPrefix-$resourceNameSuffix"
+        PartnerServerName = "$failoverRegionPrefix-$resourceNameSuffix"
         PartnerResourceGroupName = $failoverRegionResourceGroupName
         SecondaryType = 'Geo'
         AllowConnections = 'All'
