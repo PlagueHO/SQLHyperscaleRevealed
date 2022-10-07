@@ -87,7 +87,7 @@ date=$(date +"%Y%m%d%H%M")
 az deployment create \
     --name "sql-hyperscale-revealed-starting-env-$resourceNameSuffix-$date" \
     --location "$PrimaryRegion" \
-    --template-file "ch4\starting_environment.bicep" \
+    --template-file "starting_environment.bicep" \
     --parameters "primaryRegion=$PrimaryRegion" "failoverRegion=$FailoverRegion" "resourceNameSuffix=$ResourceNameSuffix" "environment=$Environment"
 
 echo "To redeploy this SQL Hyperscale Revealed starting environment use: ./newsqlhyperscalerevealedstartingenvrionment -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"
