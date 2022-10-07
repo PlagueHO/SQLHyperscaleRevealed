@@ -96,15 +96,15 @@ if [[ "$AadUserPrincipalName" == "" ]]; then
 fi
 
 # Variables to help with resource naming in the script.
-$tags = @{ Environment = $Environment }
-$baseResourcePrefix = 'sqlhr'
-$primaryRegionPrefix = "$($baseResourcePrefix)01"
-$failoverRegionPrefix = "$($baseResourcePrefix)02"
-$primaryRegionResourceGroupName = "$primaryRegionPrefix-$resourceNameSuffix-rg"
-$failoverRegionResourceGroupName = "$failoverRegionPrefix-$resourceNameSuffix-rg"
-$subscriptionId = (Get-AzContext).Subscription.Id
-$userId = (Get-AzAdUser -UserPrincipalName $AadUserPrincipalName).Id
-$privateZone = 'privatelink.database.windows.net'
+tags=@{ Environment = $Environment }
+baseResourcePrefix='sqlhr'
+primaryRegionPrefix="$($baseResourcePrefix)01"
+failoverRegionPrefix="$($baseResourcePrefix)02"
+primaryRegionResourceGroupName="$primaryRegionPrefix-$resourceNameSuffix-rg"
+failoverRegionResourceGroupName="$failoverRegionPrefix-$resourceNameSuffix-rg"
+subscriptionId=''
+userId=(Get-AzAdUser -UserPrincipalName $AadUserPrincipalName).Id
+privateZone='privatelink.database.windows.net'
 
 # ======================================================================================================================
 # VIRTUAL NETWORK PREPARATION FOR MANAGEMENT AND BASTION SUBNETS
