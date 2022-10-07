@@ -19,65 +19,49 @@ do
         -p|--primary-region)
             shift
             if [[ "$1" != "" ]]; then
-                PrimaryRegion="${1/%\//}"
-                shift
-                skip=true
+                PrimaryRegion="${1/%\//}"; shift
             else
-                echo "E: Arg missing for --primary-region option"
-                exit 1
+                echo "E: Arg missing for --primary-region option"; exit 1
             fi
             ;;
 
         -f|--failover-region)
             shift
             if [[ "$1" != "" ]]; then
-                FailoverRegion="${1/%\//}"
-                shift
-                skip=true
+                FailoverRegion="${1/%\//}"; shift
             else
-                echo "E: Arg missing for --failover-region option"
-                exit 1
+                echo "E: Arg missing for --failover-region option"; exit 1
             fi
             ;;
 
         -r|--resource-name-suffix)
             shift
             if [[ "$1" != "" ]]; then
-                ResourceNameSuffix="${1/%\//}"
-                shift
-                skip=true
+                ResourceNameSuffix="${1/%\//}"; shift
             else
-                echo "E: Arg missing for --resource-name-suffix"
-                exit 1
+                echo "E: Arg missing for --resource-name-suffix"; exit 1
             fi
             ;;
 
         -e|--environment)
             shift
             if [[ "$1" != "" ]]; then
-                Environment="${1/%\//}"
-                shift
-                skip=true
+                Environment="${1/%\//}"; shift
             else
-                echo "E: Arg missing for --environment"
-                exit 1
+                echo "E: Arg missing for --environment"; exit 1
             fi
             ;;
 
         -a|--aad-user-principal-name)
             shift
             if [[ "$1" != "" ]]; then
-                AadUserPrincipalName="${1/%\//}"
-                shift
-                skip=true
+                AadUserPrincipalName="${1/%\//}"; shift
             else
-                echo "E: Arg missing for --aad-user-principal-name"
-                exit 1
+                echo "E: Arg missing for --aad-user-principal-name"; exit 1
             fi
             ;;
 
         -h|--help)
-            echo "$1"
             echo "Deploys the Hyperscale database and configures it with the following requirements:"
             echo "- Creates user assigned managed identity for the Hyperscale database."
             echo "- Generates TDE protector key in Key Vault."
@@ -90,16 +74,15 @@ do
             echo "- Creates the fail over region resources, including the logical server and database."
             echo ""
             echo "Usage:"
-            echo "    -p\\--primary-region               The Azure region to use as the primary region."
-            echo "    -f\\--failover-region              The Azure region to use as the failover region."
-            echo "    -r\\--resource-name-suffix         The string that will be suffixed into the resource names to try to ensure resource names are globally unique."
-            echo "    -e\\--environment                  This string will be used to set the Environment tag in each resource."
-            echo "    -a\\--aad-user-principal-name      The Azure AD principal user account name running this script."
+            echo "    -p\\--primary-region           The Azure region to use as the primary region."
+            echo "    -f\\--failover-region          The Azure region to use as the failover region."
+            echo "    -r\\--resource-name-suffix     The string that will be suffixed into the resource names to try to ensure resource names are globally unique."
+            echo "    -e\\--environment              This string will be used to set the Environment tag in each resource."
+            echo "    -a\\--aad-user-principal-name  The Azure AD principal user account name running this script."
             echo "    --help"
             exit 1
             ;;
     esac
-    shift
 done
 
 if [[ "$ResourceNameSuffix" == "" ]]; then
