@@ -72,7 +72,7 @@ do
     esac
 done
 
-if [[$UseRandomResourceNameSuffix == true]]; then
+if [[ "$UseRandomResourceNameSuffix" == true ]]; then
     # This line generates a random string of 4 characters
     ResourceNameSuffix=$(cat /dev/urandom | tr -dc A-Z-a-z | head -c4)
     echo "Random resource name suffix generated is '$ResourceNameSuffix'. Specify this value in the ResourceNameSuffix parameter to redploy the same environment."
@@ -90,4 +90,4 @@ az deployment create \
     --template-file "ch4\starting_environment.bicep" \
     --parameters "primaryRegion=$PrimaryRegion" "failoverRegion=$FailoverRegion" "resourceNameSuffix=$ResourceNameSuffix" "environment=$Environment"
 
-echo "To redeploy this SQL Hyperscale Revealed starting environment use: ./newsqlhyperscalerevealedstartingenvrionment -p '$PrimaryRegion' -f '$FailoverRegion' -r '$resourceNameSuffix' -e '$Environment'"
+echo "To redeploy this SQL Hyperscale Revealed starting environment use: ./newsqlhyperscalerevealedstartingenvrionment -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"
