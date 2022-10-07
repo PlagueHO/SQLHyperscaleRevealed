@@ -83,6 +83,7 @@ if [[ "$ResourceNameSuffix" == "" ]]; then
     exit 1
 fi
 
+
 date=$(date +"%Y%m%d%H%M")
 az deployment create \
     --name "sql-hyperscale-revealed-starting-env-$resourceNameSuffix-$date" \
