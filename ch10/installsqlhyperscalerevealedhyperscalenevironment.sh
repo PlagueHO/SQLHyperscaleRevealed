@@ -52,7 +52,7 @@ do
             fi
             ;;
 
-        -a|--aad-user-principal-name)
+        -u|--aad-user-principal-name)
             shift
             if [[ "$1" != "" ]]; then
                 AadUserPrincipalName="${1/%\//}"; shift
@@ -78,7 +78,7 @@ do
             echo "    -f\\--failover-region          The Azure region to use as the failover region."
             echo "    -r\\--resource-name-suffix     The string that will be suffixed into the resource names to try to ensure resource names are globally unique."
             echo "    -e\\--environment              This string will be used to set the Environment tag in each resource."
-            echo "    -a\\--aad-user-principal-name  The Azure AD principal user account name running this script."
+            echo "    -u\\--aad-user-principal-name  The Azure AD principal user account name running this script."
             echo "    --help"
             exit 1
             ;;
