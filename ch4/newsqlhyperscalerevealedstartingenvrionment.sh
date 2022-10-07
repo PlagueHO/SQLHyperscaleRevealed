@@ -3,11 +3,11 @@
 # ======================================================================================================================
 # SET SCRIPT PARAMETER DEFAULTS
 # ======================================================================================================================
+scriptPath=$(dirname $0)
 PrimaryRegion='East US'
 FailoverRegion='West US 3'
 ResourceNameSuffix=''
 Environment='SQL Hyperscale Revealed demo'
-AadUserPrincipalName=''
 
 # ======================================================================================================================
 # PROCESS THE SCRIPT PARAMETERS
@@ -87,7 +87,7 @@ date=$(date +"%Y%m%d%H%M")
 az deployment sub create \
     --name "sql-hyperscale-revealed-starting-env-$resourceNameSuffix-$date" \
     --location "$PrimaryRegion" \
-    --template-file "$(realpath $0)/starting_environment.bicep" \
+    --template-file "$scriptPath/starting_environment.bicep" \
     --parameters "primaryRegion=$PrimaryRegion" "failoverRegion=$FailoverRegion" "resourceNameSuffix=$ResourceNameSuffix" "environment=$Environment"
 
 echo "To redeploy this SQL Hyperscale Revealed starting environment use: ./newsqlhyperscalerevealedstartingenvrionment -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"
