@@ -1,80 +1,116 @@
-<#
-    .SYNOPSIS
-        Deploys the Hyperscale database and configures it with the following
-        requirements:
-            - Creates user assigned managed identity for the Hyperscale database.
-            - Generates TDE protector key in Key Vault.
-            - Reconfigures the primary region virtual network to add AzureBastionSubnet
-              and management_Subnet.
-            - Logical server (SQL Server) in primary region with user assigned managed identity,
-              TDE customer-managed key, only allowing Azure AD authentication with the SQL admin
-              set to the SQL Administrators group.
-             - Add networking components required to connect the Hyperscale database to the
-               primary region virtual network: Private Link, DNS Zone.
-            - Connects primary region logical server to VNET in primary region.
-            - Creates the Hyperscale database in the primary region logical server with 2 AZ
-              enabled replicas and Geo-zone-redundant backups.
-            - Configures the logical server and database to send audit and diagnostic logs to
-              the Log Analytics workspace.
-            - Creates the fail over region resources, including the logical server and database.
+#!/bin/bash
 
-    .PARAMETER PrimaryRegion
-        The Azure region to use as the primary region.
-        Use this page for a list of Azure regions: https://docs.microsoft.com/en-us/azure/azure-subscription-service-limits#azure-regions
+# ======================================================================================================================
+# SET SCRIPT PARAMETER DEFAULTS
+# ======================================================================================================================
+PrimaryRegion='East US'
+FailoverRegion='West US 3'
+ResourceNameSuffix=''
+Environment='SQL Hyperscale Revealed demo'
+AadUserPrincipalName=''
 
-    .PARAMETER FailoverRegion
-        The Azure region to use as the failover region.
-        Use this page for a list of Azure regions: https://docs.microsoft.com/en-us/azure/azure-subscription-service-limits#azure-regions
+# ======================================================================================================================
+# PROCESS THE SCRIPT PARAMETERS
+# ======================================================================================================================
+while [[ $# > 0 ]]
+do
+    case "$1" in
 
-    .PARAMETER ResourceNameSuffix
-        The string that will be suffixed into the resource names to
-        try to ensure resource names are globally unique. Must be 4 characters or less.
+        -p|--primary-region)
+            shift
+            if [[ "$1" != "" ]]; then
+                PrimaryRegion="${1/%\//}"
+                shift
+                skip=true
+            else
+                echo "E: Arg missing for --primary-region option"
+                exit 1
+            fi
+            ;;
 
-    .PARAMETER Environment
-        This string will be used to set the Environment tag in each resource.
-        It can be used to easily identify that the resources that created by this script.
+        -f|--failover-region)
+            shift
+            if [[ "$1" != "" ]]; then
+                FailoverRegion="${1/%\//}"
+                shift
+                skip=true
+            else
+                echo "E: Arg missing for --failover-region option"
+                exit 1
+            fi
+            ;;
 
-    .PARAMETER AadUserPrincipalName
-        The Azure AD principal user account name running this script.
-        Required because Cloud Shell uses a Service Principal which obfuscates the user account.
+        -r|--resource-name-suffix)
+            shift
+            if [[ "$1" != "" ]]; then
+                ResourceNameSuffix="${1/%\//}"
+                shift
+                skip=true
+            else
+                echo "E: Arg missing for --resource-name-suffix"
+                exit 1
+            fi
+            ;;
 
-    .PARAMETER NoFailoverRegion
-        This switch prevents deployment of the resources in the failover region.
-#>
-[CmdletBinding(DefaultParameterSetName = 'ResourceNameSuffix')]
+        -e|--environment)
+            shift
+            if [[ "$1" != "" ]]; then
+                Environment="${1/%\//}"
+                shift
+                skip=true
+            else
+                echo "E: Arg missing for --environment"
+                exit 1
+            fi
+            ;;
 
-param (
-    [Parameter()]
-    [ValidateNotNullOrEmpty()]
-    [System.String]
-    $PrimaryRegion = 'East US',
+        -a|--aad-user-principal-name)
+            shift
+            if [[ "$1" != "" ]]; then
+                AadUserPrincipalName="${1/%\//}"
+                shift
+                skip=true
+            else
+                echo "E: Arg missing for --aad-user-principal-name"
+                exit 1
+            fi
+            ;;
 
-    [Parameter()]
-    [ValidateNotNullOrEmpty()]
-    [System.String]
-    $FailoverRegion = 'West US 3',
+        -h|--help)
+            echo "$1"
+            echo "Deploys the Hyperscale database and configures it with the following requirements:"
+            echo "- Creates user assigned managed identity for the Hyperscale database."
+            echo "- Generates TDE protector key in Key Vault."
+            echo "- Reconfigures the primary region virtual network to add AzureBastionSubnet and management_Subnet."
+            echo "- Logical server (SQL Server) in primary region with user assigned managed identity, TDE customer-managed key, only allowing Azure AD authentication with the SQL admin set to the SQL Administrators group."
+            echo "- Add networking components required to connect the Hyperscale database to the primary region virtual network: Private Link, DNS Zone."
+            echo "- Connects primary region logical server to VNET in primary region."
+            echo "- Creates the Hyperscale database in the primary region logical server with 2 AZ enabled replicas and Geo-zone-redundant backups."
+            echo "- Configures the logical server and database to send audit and diagnostic logs to the Log Analytics workspace."
+            echo "- Creates the fail over region resources, including the logical server and database."
+            echo ""
+            echo "Usage:"
+            echo "    -p\\--primary-region               The Azure region to use as the primary region."
+            echo "    -f\\--failover-region              The Azure region to use as the failover region."
+            echo "    -r\\--resource-name-suffix         The string that will be suffixed into the resource names to try to ensure resource names are globally unique."
+            echo "    -e\\--environment                  This string will be used to set the Environment tag in each resource."
+            echo "    -a\\--aad-user-principal-name      The Azure AD principal user account name running this script."
+            echo "    --help"
+            exit 1
+            ;;
+    esac
+    shift
+done
 
-    [Parameter(Mandatory = $true, HelpMessage = 'The string that will be suffixed into the resource groups and resource names.')]
-    [ValidateNotNullOrEmpty()]
-    [ValidateLength(1,4)]
-    [System.String]
-    $ResourceNameSuffix,
+if [[ "$ResourceNameSuffix" == "" ]]; then
+    echo "E: The resource name suffix is required."
+    exit 1
+fi
 
-    [Parameter()]
-    [ValidateNotNullOrEmpty()]
-    [System.String]
-    $Environment = 'SQL Hyperscale Revealed demo',
-
-    [Parameter(Mandatory = $true, HelpMessage = 'The Azure AD principal user account name running this script.')]
-    [ValidateNotNullOrEmpty()]
-    [System.String]
-    $AadUserPrincipalName,
-
-    [Parameter()]
-    [Switch]
-    $NoFailoverRegion
-)
-#>
+if [[ "$AadUserPrincipalName" == "" ]]; then
+    echo "E: The Azure AD principal user account name running this script is required."
+    exit 1
+fi
 
 # Variables to help with resource naming in the script.
 $tags = @{ Environment = $Environment }
