@@ -287,6 +287,7 @@ az network private-endpoint dns-zone-group create \
     --resource-group "$primaryRegionResourceGroupName" \
     --endpoint-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
     --private-dns-zone "$privateZone" \
+    --zone-name "$privateZone" \
     --output none
 
 # ======================================================================================================================
@@ -295,7 +296,7 @@ az network private-endpoint dns-zone-group create \
 
 # Create the hyperscale database in the primary region
 echo "Creating the primary hyperscale database in the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-az sql database create \
+az sql db create \
     --name 'hyperscaledb' \
     --server "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
