@@ -148,9 +148,9 @@ az network vnet subnet create \
 echo "Creating user assigned managed identity '$baseResourcePrefix-$ResourceNameSuffix-umi' for the logical server ..."
 az identity create \
     --name "$baseResourcePrefix-$ResourceNameSuffix-umi" \
-    --resource-group $primaryRegionResourceGroupName \
-    --location $primaryRegion \
-    --tags Environment=$Environment \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --location "$primaryRegion" \
+    --tags Environment="$Environment" \
     --output none
 userAssignedManagedIdentityId="/subscriptions/$subscriptionId"\
     "/resourcegroups/$primaryRegionResourceGroupName"\
@@ -170,8 +170,8 @@ scope="/subscriptions/$subscriptionId"\
     "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
 az role assignment create \
     --role 'Key Vault Crypto Officer' \
-    --assignee-object-id $userId \
-    --Scope $scope \
+    --assignee-object-id "$userId" \
+    --Scope "$scope" \
     --output none
 
 # Generate the TDE protector key in the Key Vault.
@@ -182,7 +182,7 @@ az keyvault key create \
     --kty RSA \
     --size 2048 \
     --ops encrypt decrypt \
-    --tags Environment=$Environment \
+    --tags Environment="$Environment" \
     --output none
 tdeProtectorKeyId="$(az keyvault key show --name "$baseResourcePrefix-$ResourceNameSuffix-tdeprotector" --vault-name "$baseResourcePrefix-$ResourceNameSuffix-kv" --query 'key.kid' -o tsv)"
 
@@ -205,8 +205,8 @@ $scope="/subscriptions/$subscriptionId"\
     "/keys/$baseResourcePrefix-$ResourceNameSuffix-tdeprotector"
 az role assignment create \
     --role 'Key Vault Crypto Service Encryption User' \
-    --assignee-object-id $servicePrincipalId \
-    --Scope $scope \
+    --assignee-object-id "$servicePrincipalId" \
+    --Scope "$scope" \
     --Output none
 
 # ======================================================================================================================
