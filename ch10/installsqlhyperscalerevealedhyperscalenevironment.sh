@@ -301,10 +301,10 @@ az sql db create \
     --server "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
     --edition 'Hyperscale' \
-    --vcore 2 \
-    --compute-generation 'Gen5' \
+    --capacity 2 \
+    --family  'Gen5' \
     --compute-model 'Provisioned' \
-    --high-availability-replica-count 2 \
+    --ha-replicas 2 \
     --zone-redundant \
     --backup-storage-redundancy 'GeoZone' \
     --tags $tags \
