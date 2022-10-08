@@ -189,12 +189,13 @@ tdeProtectorKeyId="$(az keyvault key show --name "$baseResourcePrefix-$ResourceN
 
 # Get the Service Principal Id of the user assigned managed identity.
 # This may take a few seconds to propagate, so wait for it.
-servicePrincipalId="$(az ad sp show --display-name "$baseResourcePrefix-$ResourceNameSuffix-umi" --query 'objectId' -o tsv)"
-while [[ "$servicePrincipalId" == "" ]] {
+servicePrincipalId="$(az ad sp show --id "$baseResourcePrefix-$ResourceNameSuffix-umi" --query 'objectId' -o tsv)"
+while [[ "$servicePrincipalId" == "" ]]
+do
     echo "Waiting for the service principal of user assigned managed identity '$baseResourcePrefix-$ResourceNameSuffix-umi' to be available ..."
     sleep 5
-    servicePrincipalId="$(az ad sp show --display-name "$baseResourcePrefix-$ResourceNameSuffix-umi" --query 'objectId' -o tsv)"
-}
+    servicePrincipalId="$(az ad sp show --id "$baseResourcePrefix-$ResourceNameSuffix-umi" --query 'objectId' -o tsv)"
+done
 
 # Assign the Key Vault Crypto Service Encryption User role to the user assigned managed identity
 # on the key in the Key Vault.
