@@ -248,7 +248,7 @@ az sql server create \
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
 echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-sqlServerResourceId=="/subscriptions/$subscriptionId"\
+sqlServerResourceId="/subscriptions/$subscriptionId"\
 "/resourcegroups/$primaryRegionResourceGroupName"\
 "/providers/Microsoft.Sql"\
 "/servers/$baseResourcePrefix-$ResourceNameSuffix"
@@ -327,6 +327,7 @@ az sql server audit-policy update \
     --log-analytics-workspace-resource-id "$logAnalyticsWorkspaceResourceId" \
     --log-analytics-target-state Enabled \
     --state Enabled \
+    --output none
 
 # Enable sending database diagnostic logs to the Log Analytics workspace
 echo "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$ResourceNameSuffix-law' ..."
@@ -346,7 +347,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "AutomaticTuning",
         "enabled": true,
@@ -354,7 +355,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "QueryStoreRuntimeStatistics",
         "enabled": true,
@@ -362,7 +363,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "Errors",
         "enabled": true,
@@ -370,7 +371,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "DatabaseWaitStatistics",
         "enabled": true,
@@ -378,7 +379,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "Timeouts",
         "enabled": true,
@@ -386,7 +387,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "Blocks",
         "enabled": true,
@@ -394,7 +395,7 @@ az monitor diagnostic-settings create \
             "enabled": false,
             "days": 0
         }
-    }
+    },
     {
         "category": "Deadlocks",
         "enabled": true,
