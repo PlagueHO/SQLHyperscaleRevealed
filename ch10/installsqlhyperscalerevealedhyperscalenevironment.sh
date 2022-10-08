@@ -241,7 +241,7 @@ az sql server tde-key set \
     --server "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
     --server-key-type AzureKeyVault \
-    --kid $tdeProtectorKeyId
+    --kid "$tdeProtectorKeyId"
 
 # ======================================================================================================================
 # CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
@@ -436,7 +436,7 @@ if [[ "$NoFailoverRegion" == false ]]; then
         --server "$failoverRegionPrefix-$ResourceNameSuffix" \
         --resource-group "$failoverRegionResourceGroupName" \
         --server-key-type AzureKeyVault \
-        --kid $tdeProtectorKeyId
+        --kid "$tdeProtectorKeyId"
 
     # ======================================================================================================================
     # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
