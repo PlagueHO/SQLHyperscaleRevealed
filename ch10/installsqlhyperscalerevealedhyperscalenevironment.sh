@@ -229,7 +229,7 @@ az sql server create \
     --enable-public-network false \
     --enable-ad-only-auth \
     --identity-type UserAssigned \
-    --assign-identity "$userAssignedManagedIdentityId" \
+    --user-assigned-identity-id "$userAssignedManagedIdentityId" \
     --external-admin-principal-type Group \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
@@ -242,66 +242,43 @@ az sql server create \
 
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
-echo "Creating the private link service connection '$primaryRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
+echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
 sqlServerResourceId="$(az sql server show --name "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
-az network private-link-service create \
+az network private-endpoint create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix-pl" \
     --resource-group "$primaryRegionResourceGroupName" \
     --location "$primaryRegion" \
+    --vnet-name "$primaryRegionPrefix-vnet" \
+    --subnet "data_subnet" \
     --private-connection-resource-id "$sqlServerResourceId" \
-    --group-id 'SqlServer' \
-    --tags Environment="$Environment" \
+    --group-ids sqlServer \
+    --connection-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
     --output none
-
-# Create the private endpoint for the logical server in the subnet.
-echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pe' in the 'data_subnet' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-$vnet = Get-AzVirtualNetwork `
-    -Name "$primaryRegionPrefix-$ResourceNameSuffix-vnet" `
-    -ResourceGroupName $primaryRegionResourceGroupName
-$subnet = Get-AzVirtualNetworkSubnetConfig `
-    -VirtualNetwork $vnet `
-    -Name 'data_subnet'
-$newAzPrivateEndpoint_parameters = @{
-    Name = "$primaryRegionPrefix-$ResourceNameSuffix-pe"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    Location = $primaryRegion
-    Subnet = $subnet
-    PrivateLinkServiceConnection = $privateLinkServiceConnection
-    Tag = $tags
-}
-New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
 
 # Create the private DNS zone.
 echo "Creating the private DNS Zone for '$privateZone' in resource group '$primaryRegionResourceGroupName' ..."
-$newAzPrivateDnsZone_parameters = @{
-    Name = $privateZone
-    ResourceGroupName = $primaryRegionResourceGroupName
-}
-$privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
+az network private-dns zone create \
+    --name "$privateZone" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --output none
 
 # Connect the private DNS Zone to the primary region VNET.
 echo "Connecting the private DNS Zone '$privateZone' to the virtual network '$primaryRegionPrefix-$ResourceNameSuffix-vnet' ..."
-$newAzPrivateDnsVirtualNetworkLink_parameters = @{
-    Name = "$primaryRegionPrefix-$ResourceNameSuffix-dnslink"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    ZoneName = $privateZone
-    VirtualNetworkId = $vnet.Id
-    Tag = $tags
-}
-New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
+az network private-dns link vnet create \
+    --name "$primaryRegionPrefix-$ResourceNameSuffix-dnslink" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --zone-name "$privateZone" \
+    --virtual-network "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
+    --output none
 
 # Create the DNS zone group for the private endpoint.
 echo "Creating the private DNS Zone Group '$primaryRegionPrefix-$ResourceNameSuffix-zonegroup' and connecting it to the '$primaryRegionPrefix-$ResourceNameSuffix-pe' ..."
-$privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
-    -Name $privateZone `
-    -PrivateDnsZoneId $privateDnsZone.ResourceId
-$newAzPrivateDnsZoneGroup_parameters = @{
-    Name = "$primaryRegionPrefix-$ResourceNameSuffix-zonegroup"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    PrivateEndpointName = "$primaryRegionPrefix-$ResourceNameSuffix-pe"
-    PrivateDnsZoneConfig = $privateDnsZoneConfig
-}
-New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
+az network private-endpoint dns-zone-group create \
+    --name "$primaryRegionPrefix-$ResourceNameSuffix-zonegroup" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --private-endpoint-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
+    --zone-name "$privateZone" \
+    --output none
 
 # ======================================================================================================================
 # CREATE HYPERSCALE DATABASE IN PRIMARY REGION
