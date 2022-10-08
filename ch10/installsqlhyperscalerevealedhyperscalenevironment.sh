@@ -118,23 +118,26 @@ privateZone='privatelink.database.windows.net'
 # deploy these resources in this script. This is just here for convenience.
 echo "Adding 'management_subnet' and 'AzureBastionSubnet' to the primary virtual network '$baseResourcePrefix-$ResourceNameSuffix-vnet' ..."
 az network vnet subnet create \
-    -g "$primaryRegionResourceGroupName" \
+    --resource-group "$primaryRegionResourceGroupName" \
     --vnet-name "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'management_subnet' --address-prefixes 10.0.3.0/24 -o tsv
+    --name 'management_subnet' --address-prefixes 10.0.3.0/24 \
+    --output none
 az network vnet subnet create \
-    -g "$primaryRegionResourceGroupName" \
+    --resource-group "$primaryRegionResourceGroupName" \
     --vnet-name "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'AzureBastionSubnet' --address-prefixes 10.0.4.0/24 -o tsv
-
+    --name 'AzureBastionSubnet' --address-prefixes 10.0.4.0/24 \
+    --output none
 echo "Adding 'management_subnet' and 'AzureBastionSubnet' to the failover virtual network '$baseResourcePrefix-$ResourceNameSuffix-vnet' ..."
 az network vnet subnet create \
-    -g "$failoverRegionResourceGroupName" \
+    --resource-group "$failoverRegionResourceGroupName" \
     --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'management_subnet' --address-prefixes 10.1.3.0/24 -o tsv
+    --name 'management_subnet' --address-prefixes 10.1.3.0/24 \
+    --output none
 az network vnet subnet create \
-    -g "$failoverRegionResourceGroupName" \
+    --resource-group "$failoverRegionResourceGroupName" \
     --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'AzureBastionSubnet' --address-prefixes 10.1.4.0/24 -o tsv
+    --name 'AzureBastionSubnet' --address-prefixes 10.1.4.0/24 \
+    --output none
 
 # ======================================================================================================================
 # PREPARE USER ASSIGNED MANAGED IDENTITY FOR THE HYPERSCALE DATABASES
@@ -145,9 +148,10 @@ az network vnet subnet create \
 echo "Creating user assigned managed identity '$baseResourcePrefix-$ResourceNameSuffix-umi' for the logical server ..."
 az identity create \
     --name "$baseResourcePrefix-$ResourceNameSuffix-umi" \
-    --resource-group "$primaryRegionResourceGroupName" \
-    --location "$primaryRegion" \
-    --tags Environment="$Environment"
+    --resource-group $primaryRegionResourceGroupName \
+    --location $primaryRegion \
+    --tags Environment=$Environment \
+    --output none
 userAssignedManagedIdentityId="/subscriptions/$subscriptionId"\
     "/resourcegroups/$primaryRegionResourceGroupName"\
     "/providers/Microsoft.ManagedIdentity"\
@@ -160,13 +164,15 @@ userAssignedManagedIdentityId="/subscriptions/$subscriptionId"\
 # Prepare the Key Vault for the TDE protector key and grant access the
 # user assigned managed identity permission to access the key.
 echo "Assigning 'Key Vault Crypto Officer' role to the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
+scope="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$primaryRegionResourceGroupName"\
+    "/providers/Microsoft.KeyVault"\
+    "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
 az role assignment create \
     --role 'Key Vault Crypto Officer' \
-    --assignee-object-id "$userId" \
-    --Scope "/subscriptions/$subscriptionId"\
-        "/resourcegroups/$primaryRegionResourceGroupName"\
-        "/providers/Microsoft.KeyVault"\
-        "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
+    --assignee-object-id $userId \
+    --Scope $scope \
+    --output none
 
 # Generate the TDE protector key in the Key Vault.
 echo "Creating the TDE Protector Key '$baseResourcePrefix-$ResourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
@@ -176,7 +182,8 @@ az keyvault key create \
     --kty RSA \
     --size 2048 \
     --ops encrypt decrypt \
-    --tags Environment="$Environment"
+    --tags Environment=$Environment \
+    --output none
 tdeProtectorKeyId="$(az keyvault key show --name "$baseResourcePrefix-$ResourceNameSuffix-tdeprotector" --vault-name "$baseResourcePrefix-$ResourceNameSuffix-kv" --query 'key.kid' -o tsv)"
 
 # Get the Service Principal Id of the user assigned managed identity.
@@ -191,14 +198,16 @@ while [[ "$servicePrincipalId" == "" ]] {
 # Assign the Key Vault Crypto Service Encryption User role to the user assigned managed identity
 # on the key in the Key Vault.
 echo "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$ResourceNameSuffix-umi' for the key '$baseResourcePrefix-$ResourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
+$scope="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$primaryRegionResourceGroupName"\
+    "/providers/Microsoft.KeyVault"\
+    "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"\
+    "/keys/$baseResourcePrefix-$ResourceNameSuffix-tdeprotector"
 az role assignment create \
     --role 'Key Vault Crypto Service Encryption User' \
-    --assignee-object-id "$servicePrincipalId" \
-    --Scope "/subscriptions/$subscriptionId"\
-        "/resourcegroups/$primaryRegionResourceGroupName"\
-        "/providers/Microsoft.KeyVault"\
-        "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"\
-        "/keys/$baseResourcePrefix-$ResourceNameSuffix-tdeprotector"
+    --assignee-object-id $servicePrincipalId \
+    --Scope $scope \
+    --Output none
 
 # ======================================================================================================================
 # DEPLOY LOGICAL SERVER IN PRIMARY REGION
