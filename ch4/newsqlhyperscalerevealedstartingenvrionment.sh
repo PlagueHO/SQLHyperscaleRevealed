@@ -70,7 +70,7 @@ do
             exit 1
             ;;
 
-        - *)
+        - * )
             echo "E: Unknown option: $1"; exit 1
             ;;
     esac

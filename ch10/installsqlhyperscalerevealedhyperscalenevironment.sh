@@ -100,14 +100,13 @@ if [[ "$AadUserPrincipalName" == "" ]]; then
 fi
 
 # Variables to help with resource naming in the script.
-tags=@{ Environment = $Environment }
 baseResourcePrefix='sqlhr'
 primaryRegionPrefix="$($baseResourcePrefix)01"
 failoverRegionPrefix="$($baseResourcePrefix)02"
 primaryRegionResourceGroupName="$primaryRegionPrefix-$resourceNameSuffix-rg"
 failoverRegionResourceGroupName="$failoverRegionPrefix-$resourceNameSuffix-rg"
-subscriptionId=''
-userId=(Get-AzAdUser -UserPrincipalName $AadUserPrincipalName).Id
+subscriptionId="$(az account list --query "[?isDefault].id" -o tsv)"
+userId="az ad user show --id $AadUserPrincipalName --query 'id' -o tsv"
 privateZone='privatelink.database.windows.net'
 
 # ======================================================================================================================
@@ -117,17 +116,25 @@ privateZone='privatelink.database.windows.net'
 # Update the VNET subnets to add the management and Bastion subnets in case
 # they are needed for the management VM and Azure Bastion - although we won't
 # deploy these resources in this script. This is just here for convenience.
-Write-Verbose -Message "Adding 'management_subnet' and 'AzureBastionSubnet' to the primary virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..." -Verbose
-$vnet = Get-AzVirtualNetwork -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $primaryRegionResourceGroupName
-Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.0.3.0/24' -VirtualNetwork $vnet | Out-Null
-Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.0.4.0/24' -VirtualNetwork $vnet | Out-Null
-$vnet | Set-AzVirtualNetwork | Out-Null
+echo "Adding 'management_subnet' and 'AzureBastionSubnet' to the primary virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..."
+az network vnet subnet create \
+    -g "$primaryRegionResourceGroupName" \
+    --vnet-name "$primaryRegionPrefix-$resourceNameSuffix-vnet" \
+    -n 'management_subnet' --address-prefixes 10.0.3.0/24
+az network vnet subnet create \
+    -g "$primaryRegionResourceGroupName" \
+    --vnet-name "$primaryRegionPrefix-$resourceNameSuffix-vnet" \
+    -n 'AzureBastionSubnet' --address-prefixes 10.0.4.0/24
 
-Write-Verbose -Message "Adding 'management_subnet' and 'AzureBastionSubnet' to the failover virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..." -Verbose
-$vnet = Get-AzVirtualNetwork -Name "$failoverRegionPrefix-$resourceNameSuffix-vnet" -ResourceGroupName $failoverRegionResourceGroupName
-Add-AzVirtualNetworkSubnetConfig -Name 'management_subnet' -AddressPrefix '10.1.3.0/24' -VirtualNetwork $vnet | Out-Null
-Add-AzVirtualNetworkSubnetConfig -Name 'AzureBastionSubnet' -AddressPrefix '10.1.4.0/24' -VirtualNetwork $vnet | Out-Null
-$vnet | Set-AzVirtualNetwork | Out-Null
+echo "Adding 'management_subnet' and 'AzureBastionSubnet' to the failover virtual network '$baseResourcePrefix-$resourceNameSuffix-vnet' ..."
+az network vnet subnet create \
+    -g "$failoverRegionResourceGroupName" \
+    --vnet-name "$faliverRegionPrefix-$resourceNameSuffix-vnet" \
+    -n 'management_subnet' --address-prefixes 10.1.3.0/24
+az network vnet subnet create \
+    -g "$failoverRegionResourceGroupName" \
+    --vnet-name "$faliverRegionPrefix-$resourceNameSuffix-vnet" \
+    -n 'AzureBastionSubnet' --address-prefixes 10.1.4.0/24
 
 # ======================================================================================================================
 # PREPARE USER ASSIGNED MANAGED IDENTITY FOR THE HYPERSCALE DATABASES
@@ -135,17 +142,15 @@ $vnet | Set-AzVirtualNetwork | Out-Null
 
 # Create user assigned managed identity for the logical servers in both
 # regions to use to access the Key Vault for the TDE protector key.
-Write-Verbose -Message "Creating user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' for the logical server ..." -Verbose
-$newAzUserAssignedIdentity_parameters = @{
-    Name = "$baseResourcePrefix-$resourceNameSuffix-umi"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    Location = $primaryRegion
-    Tag = $tags
-}
-New-AzUserAssignedIdentity @newAzUserAssignedIdentity_parameters | Out-Null
-$userAssignedManagedIdentityId = "/subscriptions/$subscriptionId" + `
-    "/resourcegroups/$primaryRegionResourceGroupName" + `
-    "/providers/Microsoft.ManagedIdentity" + `
+echo "Creating user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' for the logical server ..."
+az identity create \
+    --name "$baseResourcePrefix-$resourceNameSuffix-umi" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --location "$primaryRegion" \
+    --tags Environment="$Environment"
+userAssignedManagedIdentityId="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$primaryRegionResourceGroupName"\
+    "/providers/Microsoft.ManagedIdentity"\
     "/userAssignedIdentities/$baseResourcePrefix-$resourceNameSuffix-umi"
 
 # ======================================================================================================================
@@ -154,55 +159,46 @@ $userAssignedManagedIdentityId = "/subscriptions/$subscriptionId" + `
 
 # Prepare the Key Vault for the TDE protector key and grant access the
 # user assigned managed identity permission to access the key.
-Write-Verbose -Message "Assigning 'Key Vault Crypto Officer' role to the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
-$newAzRoleAssignment_parameters = @{
-    ObjectId = $userId
-    RoleDefinitionName = 'Key Vault Crypto Officer'
-    Scope = "/subscriptions/$subscriptionId" + `
-        "/resourcegroups/$primaryRegionResourceGroupName" + `
-        "/providers/Microsoft.KeyVault" + `
+echo "Assigning 'Key Vault Crypto Officer' role to the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..."
+az role assignment create \
+    --role 'Key Vault Crypto Officer' \
+    --assignee-object-id "$userId" \
+    --Scope "/subscriptions/$subscriptionId"\
+        "/resourcegroups/$primaryRegionResourceGroupName"\
+        "/providers/Microsoft.KeyVault"\
         "/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"
-}
-New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 
 # Generate the TDE protector key in the Key Vault.
-Write-Verbose -Message "Creating the TDE Protector Key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
-$addAzKeyVaultKey_parameters = @{
-    KeyName = "$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
-    VaultName = "$baseResourcePrefix-$resourceNameSuffix-kv"
-    KeyType = 'RSA'
-    Size = 2048
-    Destination = 'Software'
-    Tag = $tags
-}
-Add-AzKeyVaultKey @addAzKeyVaultKey_parameters | Out-Null
-$tdeProtectorKeyId = (Get-AzKeyVaultKey `
-    -KeyName "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" `
-    -VaultName "$baseResourcePrefix-$resourceNameSuffix-kv").Id
+echo "Creating the TDE Protector Key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..."
+az keyvault key create \
+    --name "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" \
+    --vault-name "$baseResourcePrefix-$resourceNameSuffix-kv" \
+    --kty RSA \
+    --size 2048 \
+    --ops encrypt decrypt \
+    --tags Environment="$Environment"
+tdeProtectorKeyId="$(az keyvault key show --name "$baseResourcePrefix-$resourceNameSuffix-tdeprotector" --vault-name "$baseResourcePrefix-$resourceNameSuffix-kv" --query 'key.kid' -o tsv)"
 
 # Get the Service Principal Id of the user assigned managed identity.
 # This may take a few seconds to propagate, so wait for it.
-$servicePrincipalId = (Get-AzADServicePrincipal -DisplayName "$baseResourcePrefix-$resourceNameSuffix-umi").Id
-while ($null -eq $servicePrincipalId) {
-    Write-Verbose -Message "Waiting for the service principal of user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' to be available ..." -Verbose
-    Start-Sleep -Seconds 5
-    $servicePrincipalId = (Get-AzADServicePrincipal -DisplayName "$baseResourcePrefix-$resourceNameSuffix-umi").Id
+servicePrincipalId="$(az ad sp show --display-name "$baseResourcePrefix-$resourceNameSuffix-umi" --query 'objectId' -o tsv)"
+while [[ "$servicePrincipalId" == "" ]] {
+    echo "Waiting for the service principal of user assigned managed identity '$baseResourcePrefix-$resourceNameSuffix-umi' to be available ..."
+    sleep 5
+    servicePrincipalId="$(az ad sp show --display-name "$baseResourcePrefix-$resourceNameSuffix-umi" --query 'objectId' -o tsv)"
 }
 
 # Assign the Key Vault Crypto Service Encryption User role to the user assigned managed identity
 # on the key in the Key Vault.
-Write-Verbose -Message "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$resourceNameSuffix-umi' for the key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
-$tdeProtectorKeyResourceId = "/subscriptions/$subscriptionId" + `
-    "/resourcegroups/$primaryRegionResourceGroupName" + `
-    "/providers/Microsoft.KeyVault" + `
-    "/vaults/$baseResourcePrefix-$resourceNameSuffix-kv" + `
-    "/keys/$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
-$newAzRoleAssignment_parameters = @{
-    ObjectId = $servicePrincipalId
-    RoleDefinitionName = 'Key Vault Crypto Service Encryption User'
-    Scope = $tdeProtectorKeyResourceId
-}
-New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
+echo "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$resourceNameSuffix-umi' for the key '$baseResourcePrefix-$resourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..."
+az role assignment create \
+    --role 'Key Vault Crypto Service Encryption User' \
+    --assignee-object-id "$servicePrincipalId" \
+    --Scope "/subscriptions/$subscriptionId"\
+        "/resourcegroups/$primaryRegionResourceGroupName"\
+        "/providers/Microsoft.KeyVault"\
+        "/vaults/$baseResourcePrefix-$resourceNameSuffix-kv"\
+        "/keys/$baseResourcePrefix-$resourceNameSuffix-tdeprotector"
 
 # ======================================================================================================================
 # DEPLOY LOGICAL SERVER IN PRIMARY REGION
@@ -212,7 +208,7 @@ New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
 # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
 # with the Set-AzSqlServerActiveDirectoryAdministrator command.
-Write-Verbose -Message "Creating logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
+echo "Creating logical server '$primaryRegionPrefix-$resourceNameSuffix' ..."
 $sqlAdministratorPassword = (-join ((48..57) + (97..122) | Get-Random -Count 15 | ForEach-Object { [char]$_} )) + '!'
 $sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
 $newAzSqlServer_parameters = @{
@@ -231,7 +227,7 @@ $newAzSqlServer_parameters = @{
 }
 New-AzSqlServer @newAzSqlServer_parameters | Out-Null
 
-Write-Verbose -Message "Configure administartors of logical server '$primaryRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..." -Verbose
+echo "Configure administartors of logical server '$primaryRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..."
 $sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
 $setAzSqlServerActiveDirectoryAdministrator_parameters = @{
     ObjectId = $sqlAdministratorsGroupId
@@ -247,7 +243,7 @@ Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdmini
 
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
-Write-Verbose -Message "Creating the private link service connection '$primaryRegionPrefix-$resourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
+echo "Creating the private link service connection '$primaryRegionPrefix-$resourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..."
 $sqlServerResourceId = (Get-AzSqlServer `
     -ServerName "$primaryRegionPrefix-$resourceNameSuffix" `
     -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
@@ -259,7 +255,7 @@ $newAzPrivateLinkServiceConnection_parameters = @{
 $privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_parameters
 
 # Create the private endpoint for the logical server in the subnet.
-Write-Verbose -Message "Creating the private endpoint '$primaryRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
+echo "Creating the private endpoint '$primaryRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..."
 $vnet = Get-AzVirtualNetwork `
     -Name "$primaryRegionPrefix-$resourceNameSuffix-vnet" `
     -ResourceGroupName $primaryRegionResourceGroupName
@@ -277,7 +273,7 @@ $newAzPrivateEndpoint_parameters = @{
 New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
 
 # Create the private DNS zone.
-Write-Verbose -Message "Creating the private DNS Zone for '$privateZone' in resource group '$primaryRegionResourceGroupName' ..." -Verbose
+echo "Creating the private DNS Zone for '$privateZone' in resource group '$primaryRegionResourceGroupName' ..."
 $newAzPrivateDnsZone_parameters = @{
     Name = $privateZone
     ResourceGroupName = $primaryRegionResourceGroupName
@@ -285,7 +281,7 @@ $newAzPrivateDnsZone_parameters = @{
 $privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
 
 # Connect the private DNS Zone to the primary region VNET.
-Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$primaryRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
+echo "Connecting the private DNS Zone '$privateZone' to the virtual network '$primaryRegionPrefix-$resourceNameSuffix-vnet' ..."
 $newAzPrivateDnsVirtualNetworkLink_parameters = @{
     Name = "$primaryRegionPrefix-$resourceNameSuffix-dnslink"
     ResourceGroupName = $primaryRegionResourceGroupName
@@ -296,7 +292,7 @@ $newAzPrivateDnsVirtualNetworkLink_parameters = @{
 New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
 
 # Create the DNS zone group for the private endpoint.
-Write-Verbose -Message "Creating the private DNS Zone Group '$primaryRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$primaryRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
+echo "Creating the private DNS Zone Group '$primaryRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$primaryRegionPrefix-$resourceNameSuffix-pe' ..."
 $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
     -Name $privateZone `
     -PrivateDnsZoneId $privateDnsZone.ResourceId
@@ -313,7 +309,7 @@ New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
 # ======================================================================================================================
 
 # Create the hyperscale database in the primary region
-Write-Verbose -Message "Creating the primary hyperscale database in the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
+echo "Creating the primary hyperscale database in the logical server '$primaryRegionPrefix-$resourceNameSuffix' ..."
 $newAzSqlDatabase_parameters = @{
     DatabaseName = 'hyperscaledb'
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
@@ -334,7 +330,7 @@ New-AzSqlDatabase @newAzSqlDatabase_parameters | Out-Null
 # ======================================================================================================================
 
 # Enable sending primary logical server audit logs to the Log Analytics workspace
-Write-Verbose -Message "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+echo "Configuring the primary logical server '$primaryRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..."
 $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
     "/resourcegroups/$primaryRegionResourceGroupName" + `
     "/providers/microsoft.operationalinsights" + `
@@ -348,7 +344,7 @@ $setAzSqlServerAudit_Parameters = @{
 Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 
 # Enable sending database diagnostic logs to the Log Analytics workspace
-Write-Verbose -Message "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+echo "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$resourceNameSuffix-law' ..."
 $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
     "/resourcegroups/$primaryRegionResourceGroupName" + `
     "/providers/microsoft.operationalinsights" + `
@@ -376,7 +372,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
     # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
     # with the Set-AzSqlServerActiveDirectoryAdministrator command.
-    Write-Verbose -Message "Creating logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+    echo "Creating logical server '$failoverRegionPrefix-$resourceNameSuffix' ..."
     $sqlAdministratorPassword = (-join ((48..57) + (97..122) | Get-Random -Count 15 | ForEach-Object { [char]$_} )) + '!'
     $sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
     $newAzSqlServer_parameters = @{
@@ -395,7 +391,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     }
     New-AzSqlServer @newAzSqlServer_parameters | Out-Null
 
-    Write-Verbose -Message "Configure administartors of logical server '$failoverRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..." -Verbose
+    echo "Configure administartors of logical server '$failoverRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..."
     $sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
     $setAzSqlServerActiveDirectoryAdministrator_parameters = @{
         ObjectId = $sqlAdministratorsGroupId
@@ -411,7 +407,7 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
     # Create the private link service connection
-    Write-Verbose -Message "Creating the private link service connection '$failoverRegionPrefix-$resourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+    echo "Creating the private link service connection '$failoverRegionPrefix-$resourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..."
     $sqlServerResourceId = (Get-AzSqlServer `
         -ServerName "$failoverRegionPrefix-$resourceNameSuffix" `
         -ResourceGroupName $failoverRegionResourceGroupName).ResourceId
@@ -423,7 +419,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     $privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_parameters
 
     # Create the private endpoint for the logical server in the subnet.
-    Write-Verbose -Message "Creating the private endpoint '$failoverRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+    echo "Creating the private endpoint '$failoverRegionPrefix-$resourceNameSuffix-pe' in the 'data_subnet' for the logical server '$failoverRegionPrefix-$resourceNameSuffix' ..."
     $vnet = Get-AzVirtualNetwork `
         -Name "$failoverRegionPrefix-$resourceNameSuffix-vnet" `
         -ResourceGroupName $failoverRegionResourceGroupName
@@ -441,7 +437,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
 
     # Create the private DNS zone.
-    Write-Verbose -Message "Creating the private DNS Zone for '$privateZone' in resource group '$failoverRegionResourceGroupName' ..." -Verbose
+    echo "Creating the private DNS Zone for '$privateZone' in resource group '$failoverRegionResourceGroupName' ..."
     $newAzPrivateDnsZone_parameters = @{
         Name = $privateZone
         ResourceGroupName = $failoverRegionResourceGroupName
@@ -449,7 +445,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     $privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
 
     # Connect the private DNS Zone to the failover region VNET.
-    Write-Verbose -Message "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$resourceNameSuffix-vnet' ..." -Verbose
+    echo "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$resourceNameSuffix-vnet' ..."
     $newAzPrivateDnsVirtualNetworkLink_parameters = @{
         Name = "$failoverRegionPrefix-$resourceNameSuffix-dnslink"
         ResourceGroupName = $failoverRegionResourceGroupName
@@ -460,7 +456,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
 
     # Create the DNS zone group for the private endpoint.
-    Write-Verbose -Message "Creating the private DNS Zone Group '$failoverRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$resourceNameSuffix-pe' ..." -Verbose
+    echo "Creating the private DNS Zone Group '$failoverRegionPrefix-$resourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$resourceNameSuffix-pe' ..."
     $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
         -Name $privateZone `
         -PrivateDnsZoneId $privateDnsZone.ResourceId
@@ -477,7 +473,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     # ======================================================================================================================
 
     # Establish the active geo-replication from the primary region to the failover region.
-    Write-Verbose -Message "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$resourceNameSuffix' to '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
+    echo "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$resourceNameSuffix' to '$failoverRegionPrefix-$resourceNameSuffix' ..."
     $newAzSqlDatabaseSecondary = @{
         DatabaseName = 'hyperscaledb'
         ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
@@ -498,7 +494,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     # ======================================================================================================================
 
     # Enable sending failover logical server audit logs to the Log Analytics workspace
-    Write-Verbose -Message "Configuring the failover logical server '$failoverRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+    echo "Configuring the failover logical server '$failoverRegionPrefix-$resourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..."
     $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
         "/resourcegroups/$failoverRegionResourceGroupName" + `
         "/providers/microsoft.operationalinsights" + `
@@ -512,7 +508,7 @@ if (-not $NoFailoverRegion.IsPresent) {
     Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
 
     # Enable sending database diagnostic logs to the Log Analytics workspace
-    Write-Verbose -Message "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..." -Verbose
+    echo "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$resourceNameSuffix-law' ..."
     $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
         "/resourcegroups/$failoverRegionResourceGroupName" + `
         "/providers/microsoft.operationalinsights" + `
@@ -538,7 +534,7 @@ if (-not $NoFailoverRegion.IsPresent) {
 
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
-Write-Verbose -Message "Removing 'Key Vault Crypto Officer' role from the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..." -Verbose
+echo "Removing 'Key Vault Crypto Officer' role from the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$resourceNameSuffix-kv' ..."
 $roleAssignmentScope = "/subscriptions/$subscriptionId" + `
     "/resourcegroups/$primaryRegionResourceGroupName" + `
     "/providers/Microsoft.KeyVault" + `
