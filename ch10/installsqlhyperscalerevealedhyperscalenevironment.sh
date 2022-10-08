@@ -8,7 +8,7 @@ FailoverRegion='West US 3'
 ResourceNameSuffix=''
 Environment='SQL Hyperscale Revealed demo'
 AadUserPrincipalName=''
-noFailoverRegion=false
+NoFailoverRegion=false
 
 # ======================================================================================================================
 # PROCESS THE SCRIPT PARAMETERS
@@ -64,7 +64,7 @@ do
 
         --no-failover-region)
             shift
-            noFailoverRegion=true
+            NoFailoverRegion=true
             ;;
 
         -h|--help)
@@ -224,9 +224,6 @@ az role assignment create \
 # ======================================================================================================================
 
 # Create the primary SQL logical server without AAD authentication.
-# Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
-# is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
-# with the Set-AzSqlServerActiveDirectoryAdministrator command.
 echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
 sqlAdministratorsGroupSid="$(az ad group show --group 'SQL Administrators' --query 'id' -o tsv)"
 az sql server create \
@@ -330,11 +327,15 @@ az sql server audit-policy update \
 
 # Enable sending database diagnostic logs to the Log Analytics workspace
 echo "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$ResourceNameSuffix-law' ..."
-logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" \
-"/resourcegroups/$primaryRegionResourceGroupName" \
-"/providers/microsoft.operationalinsights" \
+logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/microsoft.operationalinsights"\
 "/workspaces/$primaryRegionPrefix-$ResourceNameSuffix-law"
-databaseResourceId="$(az sql database show --name 'hyperscaledb' --server "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
+databaseResourceId="/subscriptions/$subscriptionId"\
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/Microsoft.Sql"\
+"/servers/$primaryRegionPrefix-$ResourceNameSuffix"\
+"/databases/hyperscaledb"
 logs='[
     {
         "category": "SQLInsights",
@@ -408,43 +409,25 @@ az monitor diagnostic-settings create \
     --workspace "$logAnalyticsWorkspaceResourceId" \
     --output none
 
-if (-not $NoFailoverRegion.IsPresent) {
+if [[ "$NoFailoverRegion" != true ]]; then
     # ======================================================================================================================
     # DEPLOY LOGICAL SERVER IN FAILOVER REGION
     # ======================================================================================================================
 
     # Create the failover SQL logical server without AAD authentication.
-    # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
-    # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
-    # with the Set-AzSqlServerActiveDirectoryAdministrator command.
     echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    $sqlAdministratorPassword = (-join ((48..57) + (97..122) | Get-Random -Count 15 | ForEach-Object { [char]$_} )) + '!'
-    $sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
-    $newAzSqlServer_parameters = @{
-        ServerName = "$failoverRegionPrefix-$ResourceNameSuffix"
-        ResourceGroupName = $failoverRegionResourceGroupName
-        Location = $failoverRegion
-        ServerVersion = '12.0'
-        PublicNetworkAccess = 'Disabled'
-        SqlAdministratorCredentials = $sqlAdministratorCredential
-        AssignIdentity = $true
-        IdentityType = 'UserAssigned'
-        UserAssignedIdentityId = $userAssignedManagedIdentityId
-        PrimaryUserAssignedIdentityId = $userAssignedManagedIdentityId
-        KeyId = $tdeProtectorKeyId
-        Tag = $tags
-    }
-    New-AzSqlServer @newAzSqlServer_parameters | Out-Null
-
-    echo "Configure administartors of logical server '$failoverRegionPrefix-$ResourceNameSuffix' to be Azure AD 'SQL Administrators' group ..."
-    $sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
-    $setAzSqlServerActiveDirectoryAdministrator_parameters = @{
-        ObjectId = $sqlAdministratorsGroupId
-        DisplayName = 'SQL Administrators'
-        ServerName = "$failoverRegionPrefix-$ResourceNameSuffix"
-        ResourceGroupName = $failoverRegionResourceGroupName
-    }
-    Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
+    sqlAdministratorsGroupSid="$(az ad group show --group 'SQL Administrators' --query 'id' -o tsv)"
+    az sql server create \
+        --name "$failoverRegionPrefix-$ResourceNameSuffix" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --location "$failoverRegion" \
+        --enable-ad-only-auth \
+        --identity-type UserAssigned \
+        --user-assigned-identity-id "$userAssignedManagedIdentityId" \
+        --external-admin-principal-type Group \
+        --external-admin-name 'SQL Administrators' \
+        --external-admin-sid "$sqlAdministratorsGroupSid" \
+        --output none
 
     # ======================================================================================================================
     # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
@@ -452,66 +435,48 @@ if (-not $NoFailoverRegion.IsPresent) {
 
     # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
     # Create the private link service connection
-    echo "Creating the private link service connection '$failoverRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    $sqlServerResourceId = (Get-AzSqlServer `
-        -ServerName "$failoverRegionPrefix-$ResourceNameSuffix" `
-        -ResourceGroupName $failoverRegionResourceGroupName).ResourceId
-    $newAzPrivateLinkServiceConnection_parameters = @{
-        Name = "$failoverRegionPrefix-$ResourceNameSuffix-pl"
-        PrivateLinkServiceId = $sqlServerResourceId
-        GroupId = 'SqlServer'
-    }
-    $privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_parameters
-
-    # Create the private endpoint for the logical server in the subnet.
-    echo "Creating the private endpoint '$failoverRegionPrefix-$ResourceNameSuffix-pe' in the 'data_subnet' for the logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    $vnet = Get-AzVirtualNetwork `
-        -Name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" `
-        -ResourceGroupName $failoverRegionResourceGroupName
-    $subnet = Get-AzVirtualNetworkSubnetConfig `
-        -VirtualNetwork $vnet `
-        -Name 'data_subnet'
-    $newAzPrivateEndpoint_parameters = @{
-        Name = "$failoverRegionPrefix-$ResourceNameSuffix-pe"
-        ResourceGroupName = $failoverRegionResourceGroupName
-        Location = $failoverRegion
-        Subnet = $subnet
-        PrivateLinkServiceConnection = $privateLinkServiceConnection
-        Tag = $tags
-    }
-    New-AzPrivateEndpoint @newAzPrivateEndpoint_parameters | Out-Null
+    echo "Creating the private endpoint '$failoverRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
+    sqlServerResourceId="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$failoverRegionResourceGroupName"\
+    "/providers/Microsoft.Sql"\
+    "/servers/$failoverRegionPrefix-$ResourceNameSuffix"
+    az network private-endpoint create \
+        --name "$failoverRegionPrefix-$ResourceNameSuffix-pe" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --location "$failoverRegion" \
+        --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
+        --subnet "data_subnet" \
+        --private-connection-resource-id "$sqlServerResourceId" \
+        --group-id sqlServer \
+        --connection-name "$failoverRegionPrefix-$ResourceNameSuffix-pl" \
+        --output none
 
     # Create the private DNS zone.
     echo "Creating the private DNS Zone for '$privateZone' in resource group '$failoverRegionResourceGroupName' ..."
-    $newAzPrivateDnsZone_parameters = @{
-        Name = $privateZone
-        ResourceGroupName = $failoverRegionResourceGroupName
-    }
-    $privateDnsZone = New-AzPrivateDnsZone @newAzPrivateDnsZone_parameters
+    az network private-dns zone create \
+        --name "$privateZone" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --output none
 
     # Connect the private DNS Zone to the failover region VNET.
     echo "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$ResourceNameSuffix-vnet' ..."
-    $newAzPrivateDnsVirtualNetworkLink_parameters = @{
-        Name = "$failoverRegionPrefix-$ResourceNameSuffix-dnslink"
-        ResourceGroupName = $failoverRegionResourceGroupName
-        ZoneName = $privateZone
-        VirtualNetworkId = $vnet.Id
-        Tag = $tags
-    }
-    New-AzPrivateDnsVirtualNetworkLink @newAzPrivateDnsVirtualNetworkLink_parameters | Out-Null
+    az network private-dns link vnet create \
+        --name "$failoverRegionPrefix-$ResourceNameSuffix-dnslink" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --zone-name "$privateZone" \
+        --virtual-network "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
+        --registration-enabled false \
+        --output none
 
     # Create the DNS zone group for the private endpoint.
     echo "Creating the private DNS Zone Group '$failoverRegionPrefix-$ResourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$ResourceNameSuffix-pe' ..."
-    $privateDnsZoneConfig = New-AzPrivateDnsZoneConfig `
-        -Name $privateZone `
-        -PrivateDnsZoneId $privateDnsZone.ResourceId
-    $newAzPrivateDnsZoneGroup_parameters = @{
-        Name = "$failoverRegionPrefix-$ResourceNameSuffix-zonegroup"
-        ResourceGroupName = $failoverRegionResourceGroupName
-        PrivateEndpointName = "$failoverRegionPrefix-$ResourceNameSuffix-pe"
-        PrivateDnsZoneConfig = $privateDnsZoneConfig
-    }
-    New-AzPrivateDnsZoneGroup @newAzPrivateDnsZoneGroup_parameters | Out-Null
+    az network private-endpoint dns-zone-group create \
+        --name "$failoverRegionPrefix-$ResourceNameSuffix-zonegroup" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --endpoint-name "$failoverRegionPrefix-$ResourceNameSuffix-pe" \
+        --private-dns-zone "$privateZone" \
+        --zone-name "$privateZone" \
+        --output none
 
     # ======================================================================================================================
     # CREATE REPLICA HYPERSCALE DATABASE IN FAILOVER REGION
@@ -571,7 +536,7 @@ if (-not $NoFailoverRegion.IsPresent) {
         EnableLog = $true
     }
     Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
-}
+fi
 
 # ======================================================================================================================
 # REMOVE ACCESS TO KEY VAULT FOR USER
