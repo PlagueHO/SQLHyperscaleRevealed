@@ -336,10 +336,7 @@ logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" \
 "/providers/microsoft.operationalinsights" \
 "/workspaces/$primaryRegionPrefix-$ResourceNameSuffix-law"
 databaseResourceId="$(az sql database show --name 'hyperscaledb' --server "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
-az monitor diagnostic-settings create \
-    --name "Send all logs to $primaryRegionPrefix-$ResourceNameSuffix-law" \
-    --resource "$databaseResourceId" \
-    --logs '[
+logs='[
     {
         "category": "SQLInsights",
         "enabled": true,
@@ -405,6 +402,10 @@ az monitor diagnostic-settings create \
         }
     }
 ]'
+az monitor diagnostic-settings create \
+    --name "Send all logs to $primaryRegionPrefix-$ResourceNameSuffix-law" \
+    --resource "$databaseResourceId" \
+    --logs "$logs" \
     --workspace "$logAnalyticsWorkspaceResourceId" \
     --output none
 
