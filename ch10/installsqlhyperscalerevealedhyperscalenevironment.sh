@@ -233,6 +233,7 @@ az sql server create \
     --enable-ad-only-auth \
     --identity-type UserAssigned \
     --user-assigned-identity-id "$userAssignedManagedIdentityId" \
+    --key-id $tdeProtectorKeyId \
     --external-admin-principal-type Group \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
@@ -424,6 +425,7 @@ if [[ "$NoFailoverRegion" == false ]]; then
         --enable-ad-only-auth \
         --identity-type UserAssigned \
         --user-assigned-identity-id "$userAssignedManagedIdentityId" \
+        --key-id $tdeProtectorKeyId \
         --external-admin-principal-type Group \
         --external-admin-name 'SQL Administrators' \
         --external-admin-sid "$sqlAdministratorsGroupSid" \
