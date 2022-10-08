@@ -278,8 +278,6 @@ az network private-dns link vnet create \
     --zone-name "$privateZone" \
     --virtual-network "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
     --registration-enabled false \
-    --endpoint-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
-    --private-dns-zone "$privateZone" \
     --output none
 
 # Create the DNS zone group for the private endpoint.
@@ -287,8 +285,8 @@ echo "Creating the private DNS Zone Group '$primaryRegionPrefix-$ResourceNameSuf
 az network private-endpoint dns-zone-group create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix-zonegroup" \
     --resource-group "$primaryRegionResourceGroupName" \
-    --private-endpoint-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
-    --zone-name "$privateZone" \
+    --endpoint-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
+    --private-dns-zone "$privateZone" \
     --output none
 
 # ======================================================================================================================
