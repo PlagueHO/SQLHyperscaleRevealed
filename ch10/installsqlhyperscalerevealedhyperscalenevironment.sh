@@ -251,7 +251,7 @@ echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pl
 sqlServerResourceId="/subscriptions/$subscriptionId"\
 "/resourcegroups/$primaryRegionResourceGroupName"\
 "/providers/Microsoft.Sql"\
-"/servers/$baseResourcePrefix-$ResourceNameSuffix"
+"/servers/$primaryRegionPrefix-$ResourceNameSuffix"
 az network private-endpoint create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
     --resource-group "$primaryRegionResourceGroupName" \
