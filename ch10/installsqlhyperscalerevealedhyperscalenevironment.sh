@@ -226,7 +226,6 @@ az sql server create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
     --location "$primaryRegion" \
-    --enable-public-network false \
     --enable-ad-only-auth \
     --identity-type UserAssigned \
     --user-assigned-identity-id "$userAssignedManagedIdentityId" \
