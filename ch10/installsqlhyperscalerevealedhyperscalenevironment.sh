@@ -115,6 +115,7 @@ failoverRegionResourceGroupName=$failoverRegionPrefix-$ResourceNameSuffix-rg
 subscriptionId="$(az account list --query "[?isDefault].id" -o tsv)"
 userId="$(az ad user show --id $AadUserPrincipalName --query 'id' -o tsv)"
 privateZone='privatelink.database.windows.net'
+sqlAdministratorsGroupSid="$(az ad group show --group 'SQL Administrators' --query 'id' -o tsv)"
 
 # ======================================================================================================================
 # VIRTUAL NETWORK PREPARATION FOR MANAGEMENT AND BASTION SUBNETS
@@ -225,7 +226,6 @@ az role assignment create \
 
 # Create the primary SQL logical server without AAD authentication.
 echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-sqlAdministratorsGroupSid="$(az ad group show --group 'SQL Administrators' --query 'id' -o tsv)"
 az sql server create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
@@ -233,11 +233,15 @@ az sql server create \
     --enable-ad-only-auth \
     --identity-type UserAssigned \
     --user-assigned-identity-id "$userAssignedManagedIdentityId" \
-    --key-id $tdeProtectorKeyId \
     --external-admin-principal-type Group \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
     --output none
+az sql server tde-key set \
+    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --server-key-type AzureKeyVault \
+    --kid $tdeProtectorKeyId
 
 # ======================================================================================================================
 # CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
@@ -417,7 +421,6 @@ if [[ "$NoFailoverRegion" == false ]]; then
 
     # Create the failover SQL logical server without AAD authentication.
     echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    sqlAdministratorsGroupSid="$(az ad group show --group 'SQL Administrators' --query 'id' -o tsv)"
     az sql server create \
         --name "$failoverRegionPrefix-$ResourceNameSuffix" \
         --resource-group "$failoverRegionResourceGroupName" \
@@ -425,11 +428,15 @@ if [[ "$NoFailoverRegion" == false ]]; then
         --enable-ad-only-auth \
         --identity-type UserAssigned \
         --user-assigned-identity-id "$userAssignedManagedIdentityId" \
-        --key-id $tdeProtectorKeyId \
         --external-admin-principal-type Group \
         --external-admin-name 'SQL Administrators' \
         --external-admin-sid "$sqlAdministratorsGroupSid" \
         --output none
+    az sql server tde-key set \
+        --server "$failoverRegionPrefix-$ResourceNameSuffix" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --server-key-type AzureKeyVault \
+        --kid $tdeProtectorKeyId
 
     # ======================================================================================================================
     # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
