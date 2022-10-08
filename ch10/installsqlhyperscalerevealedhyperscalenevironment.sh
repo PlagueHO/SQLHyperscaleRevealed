@@ -243,15 +243,15 @@ az sql server create \
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
 echo "Creating the private link service connection '$primaryRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-$sqlServerResourceId = (Get-AzSqlServer `
-    -ServerName "$primaryRegionPrefix-$ResourceNameSuffix" `
-    -ResourceGroupName $primaryRegionResourceGroupName).ResourceId
-$newAzPrivateLinkServiceConnection_parameters = @{
-    Name = "$primaryRegionPrefix-$ResourceNameSuffix-pl"
-    PrivateLinkServiceId = $sqlServerResourceId
-    GroupId = 'SqlServer'
-}
-$privateLinkServiceConnection = New-AzPrivateLinkServiceConnection @newAzPrivateLinkServiceConnection_parameters
+sqlServerResourceId="$(az sql server show --name "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
+az network private-link-service create \
+    --name "$primaryRegionPrefix-$ResourceNameSuffix-pl" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --location "$primaryRegion" \
+    --private-connection-resource-id "$sqlServerResourceId" \
+    --group-id 'SqlServer' \
+    --tags Environment="$Environment" \
+    --output none
 
 # Create the private endpoint for the logical server in the subnet.
 echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pe' in the 'data_subnet' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
