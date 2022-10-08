@@ -507,9 +507,9 @@ if [[ "$NoFailoverRegion" == false ]]; then
     # Enable sending failover logical server audit logs to the Log Analytics workspace
     echo "Configuring the failover logical server '$failoverRegionPrefix-$ResourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
     logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$failoverRegionResourceGroupName"\
-    "/providers/microsoft.operationalinsights"\
-    "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
+"/resourcegroups/$failoverRegionResourceGroupName"\
+"/providers/microsoft.operationalinsights"\
+"/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
     az sql server audit-policy update \
         --name "$failoverRegionPrefix-$ResourceNameSuffix" \
         --resource-group "$failoverRegionResourceGroupName" \
@@ -521,14 +521,14 @@ if [[ "$NoFailoverRegion" == false ]]; then
     # Enable sending database diagnostic logs to the Log Analytics workspace
     echo "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
     logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$failoverRegionResourceGroupName"\
-    "/providers/microsoft.operationalinsights"\
-    "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
+"/resourcegroups/$failoverRegionResourceGroupName"\
+"/providers/microsoft.operationalinsights"\
+"/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
     databaseResourceId="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$failoverRegionResourceGroupName"\
-    "/providers/Microsoft.Sql"\
-    "/servers/$failoverRegionPrefix-$ResourceNameSuffix"\
-    "/databases/hyperscaledb"
+"/resourcegroups/$failoverRegionResourceGroupName"\
+"/providers/Microsoft.Sql"\
+"/servers/$failoverRegionPrefix-$ResourceNameSuffix"\
+"/databases/hyperscaledb"
     logs='[
         {
             "category": "SQLInsights",
