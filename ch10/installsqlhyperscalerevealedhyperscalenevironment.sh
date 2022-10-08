@@ -8,6 +8,7 @@ FailoverRegion='West US 3'
 ResourceNameSuffix=''
 Environment='SQL Hyperscale Revealed demo'
 AadUserPrincipalName=''
+noFailoverRegion=false
 
 # ======================================================================================================================
 # PROCESS THE SCRIPT PARAMETERS
