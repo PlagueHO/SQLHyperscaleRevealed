@@ -302,7 +302,7 @@ az sql db create \
     --resource-group "$primaryRegionResourceGroupName" \
     --edition 'Hyperscale' \
     --capacity 2 \
-    --family  'Gen5' \
+    --family 'Gen5' \
     --compute-model 'Provisioned' \
     --ha-replicas 2 \
     --zone-redundant \
