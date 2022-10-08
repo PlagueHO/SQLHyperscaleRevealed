@@ -61,6 +61,11 @@ do
             fi
             ;;
 
+        --no-failover-region)
+            shift
+            noFailoverRegion=true
+            ;;
+
         -h|--help)
             echo "Deploys the Hyperscale database and configures it with the following requirements:"
             echo "- Creates user assigned managed identity for the Hyperscale database."
@@ -79,6 +84,7 @@ do
             echo "    -r\\--resource-name-suffix     The string that will be suffixed into the resource names to try to ensure resource names are globally unique."
             echo "    -e\\--environment              This string will be used to set the Environment tag in each resource."
             echo "    -u\\--aad-user-principal-name  The Azure AD principal user account name running this script."
+            echo "    --no-failover-region           This switch prevents deployment of the resources in the failover region."
             echo "    --help"
             exit 1
             ;;
@@ -246,7 +252,7 @@ az network private-endpoint create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
     --resource-group "$primaryRegionResourceGroupName" \
     --location "$primaryRegion" \
-    --vnet-name "$primaryRegionPrefix-vnet" \
+    --vnet-name "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
     --subnet "data_subnet" \
     --private-connection-resource-id "$sqlServerResourceId" \
     --group-id sqlServer \
@@ -287,20 +293,19 @@ az network private-endpoint dns-zone-group create \
 
 # Create the hyperscale database in the primary region
 echo "Creating the primary hyperscale database in the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-$newAzSqlDatabase_parameters = @{
-    DatabaseName = 'hyperscaledb'
-    ServerName = "$primaryRegionPrefix-$ResourceNameSuffix"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    Edition = 'Hyperscale'
-    Vcore = 2
-    ComputeGeneration = 'Gen5'
-    ComputeModel = 'Provisioned'
-    HighAvailabilityReplicaCount = 2
-    ZoneRedundant = $true
-    BackupStorageRedundancy = 'GeoZone'
-    Tags = $tags
-}
-New-AzSqlDatabase @newAzSqlDatabase_parameters | Out-Null
+az sql database create \
+    --name 'hyperscaledb' \
+    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --edition 'Hyperscale' \
+    --vcore 2 \
+    --compute-generation 'Gen5' \
+    --compute-model 'Provisioned' \
+    --high-availability-replica-count 2 \
+    --zone-redundant \
+    --backup-storage-redundancy 'GeoZone' \
+    --tags $tags \
+    --output none
 
 # ======================================================================================================================
 # CONFIGURE DIAGNOSTIC AND AUDIT LOGS TO SEND TO LOG ANALYTICS
@@ -308,37 +313,95 @@ New-AzSqlDatabase @newAzSqlDatabase_parameters | Out-Null
 
 # Enable sending primary logical server audit logs to the Log Analytics workspace
 echo "Configuring the primary logical server '$primaryRegionPrefix-$ResourceNameSuffix' to send audit logs to the Log Analytics workspace '$primaryRegionPrefix-$ResourceNameSuffix-law' ..."
-$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
-    "/resourcegroups/$primaryRegionResourceGroupName" + `
-    "/providers/microsoft.operationalinsights" + `
-    "/workspaces/$primaryRegionPrefix-$ResourceNameSuffix-law"
-$setAzSqlServerAudit_Parameters = @{
-    ServerName = "$primaryRegionPrefix-$ResourceNameSuffix"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    WorkspaceResourceId = $logAnalyticsWorkspaceResourceId
-    LogAnalyticsTargetState = 'Enabled'
-}
-Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
+logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/microsoft.operationalinsights"\
+"/workspaces/$primaryRegionPrefix-$ResourceNameSuffix-law"
+az sql server audit-policy update \
+    --name "$primaryRegionPrefix-$ResourceNameSuffix" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --log-analytics-workspace-resource-id "$logAnalyticsWorkspaceResourceId" \
+    --log-analytics-target-state Enabled \
+    --state Enabled \
 
 # Enable sending database diagnostic logs to the Log Analytics workspace
 echo "Configuring the primary hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$primaryRegionPrefix-$ResourceNameSuffix-law' ..."
-$logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
-    "/resourcegroups/$primaryRegionResourceGroupName" + `
-    "/providers/microsoft.operationalinsights" + `
-    "/workspaces/$primaryRegionPrefix-$ResourceNameSuffix-law"
-$databaseResourceId = (Get-AzSqlDatabase `
-    -ServerName "$primaryRegionPrefix-$ResourceNameSuffix" `
-    -ResourceGroupName $primaryRegionResourceGroupName `
-    -DatabaseName 'hyperscaledb').ResourceId
-$SetAzDiagnosticSetting_parameters = @{
-    ResourceId = $databaseResourceId
-    Name = "Send all logs to $primaryRegionPrefix-$ResourceNameSuffix-law"
-    WorkspaceId = $logAnalyticsWorkspaceResourceId
-    Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
-    Enabled = $true
-    EnableLog = $true
-}
-Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
+logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" \
+"/resourcegroups/$primaryRegionResourceGroupName" \
+"/providers/microsoft.operationalinsights" \
+"/workspaces/$primaryRegionPrefix-$ResourceNameSuffix-law"
+databaseResourceId="$(az sql database show --name 'hyperscaledb' --server "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
+az monitor diagnostic-settings create \
+    --name "Send all logs to $primaryRegionPrefix-$ResourceNameSuffix-law" \
+    --resource "$databaseResourceId" \
+    --logs '[
+    {
+        "category": "SQLInsights",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "AutomaticTuning",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "QueryStoreRuntimeStatistics",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "Errors",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "DatabaseWaitStatistics",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "Timeouts",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "Blocks",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+    {
+        "category": "Deadlocks",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+]'
+    --workspace "$logAnalyticsWorkspaceResourceId" \
+    --output none
 
 if (-not $NoFailoverRegion.IsPresent) {
     # ======================================================================================================================
