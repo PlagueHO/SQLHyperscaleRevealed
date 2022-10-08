@@ -409,7 +409,7 @@ az monitor diagnostic-settings create \
     --workspace "$logAnalyticsWorkspaceResourceId" \
     --output none
 
-if [[ "$NoFailoverRegion" != true ]]; then
+if [[ "$NoFailoverRegion" == false ]]; then
     # ======================================================================================================================
     # DEPLOY LOGICAL SERVER IN FAILOVER REGION
     # ======================================================================================================================
@@ -484,20 +484,19 @@ if [[ "$NoFailoverRegion" != true ]]; then
 
     # Establish the active geo-replication from the primary region to the failover region.
     echo "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$ResourceNameSuffix' to '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    $newAzSqlDatabaseSecondary = @{
-        DatabaseName = 'hyperscaledb'
-        ServerName = "$primaryRegionPrefix-$ResourceNameSuffix"
-        ResourceGroupName = $primaryRegionResourceGroupName
-        PartnerServerName = "$failoverRegionPrefix-$ResourceNameSuffix"
-        PartnerResourceGroupName = $failoverRegionResourceGroupName
-        SecondaryType = 'Geo'
-        SecondaryVCore = 2
-        SecondaryComputeGeneration = 'Gen5'
-        HighAvailabilityReplicaCount = 1
-        ZoneRedundant = $false
-        AllowConnections = 'All'
-    }
-    New-AzSqlDatabaseSecondary @newAzSqlDatabaseSecondary | Out-Null
+    az sql db replica create \
+        --name "hyperscaledb" \
+        --resource-group "$primaryRegionResourceGroupName" \
+        --server "$primaryRegionPrefix-$ResourceNameSuffix" \
+        --partner-resource-group "$failoverRegionResourceGroupName" \
+        --partner-server "$failoverRegionPrefix-$ResourceNameSuffix" \
+        --secondary-type Geo \
+        --family Gen5 \
+        --capacity 2 \
+        --zone-redundant false \
+        --ha-replicas 1 \
+        --read-scale "Enabled" \
+        --output none
 
     # ======================================================================================================================
     # CONFIGURE DIAGNOSTIC AND AUDIT LOGS TO SEND TO LOG ANALYTICS
@@ -505,37 +504,101 @@ if [[ "$NoFailoverRegion" != true ]]; then
 
     # Enable sending failover logical server audit logs to the Log Analytics workspace
     echo "Configuring the failover logical server '$failoverRegionPrefix-$ResourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
-    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
-        "/resourcegroups/$failoverRegionResourceGroupName" + `
-        "/providers/microsoft.operationalinsights" + `
-        "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
-    $setAzSqlServerAudit_Parameters = @{
-        ServerName = "$failoverRegionPrefix-$ResourceNameSuffix"
-        ResourceGroupName = $failoverRegionResourceGroupName
-        WorkspaceResourceId = $logAnalyticsWorkspaceResourceId
-        LogAnalyticsTargetState = 'Enabled'
-    }
-    Set-AzSqlServerAudit @setAzSqlServerAudit_Parameters | Out-Null
+    logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$failoverRegionResourceGroupName"\
+    "/providers/microsoft.operationalinsights"\
+    "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
+    az sql server audit-policy update \
+        --name "$failoverRegionPrefix-$ResourceNameSuffix" \
+        --resource-group "$failoverRegionResourceGroupName" \
+        --log-analytics-workspace-resource-id "$logAnalyticsWorkspaceResourceId" \
+        --log-analytics-target-state Enabled \
+        --state Enabled \
+        --output none
 
     # Enable sending database diagnostic logs to the Log Analytics workspace
     echo "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
-    $logAnalyticsWorkspaceResourceId = "/subscriptions/$subscriptionId" + `
-        "/resourcegroups/$failoverRegionResourceGroupName" + `
-        "/providers/microsoft.operationalinsights" + `
-        "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
-    $databaseResourceId = (Get-AzSqlDatabase `
-        -ServerName "$failoverRegionPrefix-$ResourceNameSuffix" `
-        -ResourceGroupName $failoverRegionResourceGroupName `
-        -DatabaseName 'hyperscaledb').ResourceId
-    $SetAzDiagnosticSetting_parameters = @{
-        ResourceId = $databaseResourceId
-        Name = "Send all logs to $failoverRegionPrefix-$ResourceNameSuffix-law"
-        WorkspaceId = $logAnalyticsWorkspaceResourceId
-        Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
-        Enabled = $true
-        EnableLog = $true
-    }
-    Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
+    logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$failoverRegionResourceGroupName"\
+    "/providers/microsoft.operationalinsights"\
+    "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
+    databaseResourceId="/subscriptions/$subscriptionId"\
+    "/resourcegroups/$failoverRegionResourceGroupName"\
+    "/providers/Microsoft.Sql"\
+    "/servers/$failoverRegionPrefix-$ResourceNameSuffix"\
+    "/databases/hyperscaledb"
+    logs='[
+        {
+            "category": "SQLInsights",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "AutomaticTuning",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "QueryStoreRuntimeStatistics",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "Errors",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "DatabaseWaitStatistics",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "Timeouts",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "Blocks",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        },
+        {
+            "category": "Deadlocks",
+            "enabled": true,
+            "retentionPolicy": {
+                "enabled": false,
+                "days": 0
+            }
+        }
+    ]'
+    az monitor diagnostic-settings create \
+        --name "Send all logs to $failoverRegionPrefix-$ResourceNameSuffix-law" \
+        --resource "$databaseResourceId" \
+        --logs "$logs" \
+        --workspace "$logAnalyticsWorkspaceResourceId" \
+        --output none
 fi
 
 # ======================================================================================================================
@@ -545,13 +608,12 @@ fi
 # Remove the Key Vault Crypto Service Encryption User role from the user account as we shouldn't
 # retain this access. Recommended to use Azure AD PIM to elevate temporarily.
 echo "Removing 'Key Vault Crypto Officer' role from the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
-$roleAssignmentScope = "/subscriptions/$subscriptionId" + `
-    "/resourcegroups/$primaryRegionResourceGroupName" + `
-    "/providers/Microsoft.KeyVault" + `
-    "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
-$removeAzRoleAssignment_parameters = @{
-    ObjectId = $userId
-    RoleDefinitionName = 'Key Vault Crypto Officer'
-    Scope = $roleAssignmentScope
-}
-Remove-AzRoleAssignment @removeAzRoleAssignment_parameters | Out-Null
+scope="/subscriptions/$subscriptionId"\
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/Microsoft.KeyVault"\
+"/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
+az role assignment delete \
+    --assignee "$userId" \
+    --role "Key Vault Crypto Officer" \
+    --scope "$scope" \
+    --output none
