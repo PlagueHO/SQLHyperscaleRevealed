@@ -233,15 +233,12 @@ az sql server create \
     --enable-ad-only-auth \
     --identity-type UserAssigned \
     --user-assigned-identity-id "$userAssignedManagedIdentityId" \
+    --primary-user-assigned-identity-id "$userAssignedManagedIdentityId" \
+    --key-id "$tdeProtectorKeyId" \
     --external-admin-principal-type Group \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
     --output none
-az sql server tde-key set \
-    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
-    --resource-group "$primaryRegionResourceGroupName" \
-    --server-key-type AzureKeyVault \
-    --kid "$tdeProtectorKeyId"
 
 # ======================================================================================================================
 # CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
@@ -428,15 +425,12 @@ if [[ "$NoFailoverRegion" == false ]]; then
         --enable-ad-only-auth \
         --identity-type UserAssigned \
         --user-assigned-identity-id "$userAssignedManagedIdentityId" \
+        --primary-user-assigned-identity-id "$userAssignedManagedIdentityId" \
+        --key-id "$tdeProtectorKeyId" \
         --external-admin-principal-type Group \
         --external-admin-name 'SQL Administrators' \
         --external-admin-sid "$sqlAdministratorsGroupSid" \
         --output none
-    az sql server tde-key set \
-        --server "$failoverRegionPrefix-$ResourceNameSuffix" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --server-key-type AzureKeyVault \
-        --kid "$tdeProtectorKeyId"
 
     # ======================================================================================================================
     # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
