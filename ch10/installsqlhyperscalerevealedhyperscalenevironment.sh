@@ -171,6 +171,7 @@ scope="/subscriptions/$subscriptionId"\
 az role assignment create \
     --role 'Key Vault Crypto Officer' \
     --assignee-object-id "$userId" \
+    --assignee-principal-type User \
     --scope "$scope" \
     --output none
 
@@ -206,6 +207,7 @@ $scope="/subscriptions/$subscriptionId"\
 az role assignment create \
     --role 'Key Vault Crypto Service Encryption User' \
     --assignee-object-id "$servicePrincipalId" \
+    --assignee-principal-type ServicePrincipal \
     --scope "$scope" \
     --output none
 
