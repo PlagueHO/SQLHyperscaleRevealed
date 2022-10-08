@@ -247,7 +247,10 @@ az sql server create \
 # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
 # Create the private link service connection
 echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-sqlServerResourceId="$(az sql server show --name "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
+sqlServerResourceId=="/subscriptions/$subscriptionId"\
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/Microsoft.Sql"\
+"/servers/$baseResourcePrefix-$ResourceNameSuffix"
 az network private-endpoint create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
     --resource-group "$primaryRegionResourceGroupName" \
