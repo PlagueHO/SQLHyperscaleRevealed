@@ -233,7 +233,6 @@ az sql server create \
     --external-admin-principal-type Group \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
-    --tags Environment="$Environment" \
     --output none
 
 # ======================================================================================================================
@@ -269,6 +268,9 @@ az network private-dns link vnet create \
     --resource-group "$primaryRegionResourceGroupName" \
     --zone-name "$privateZone" \
     --virtual-network "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
+    --registration-enabled false \
+    --endpoint-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
+    --private-dns-zone "$privateZone" \
     --output none
 
 # Create the DNS zone group for the private endpoint.
