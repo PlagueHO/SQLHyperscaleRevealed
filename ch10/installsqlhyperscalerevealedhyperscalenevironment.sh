@@ -153,9 +153,9 @@ az identity create \
     --tags Environment="$Environment" \
     --output none
 userAssignedManagedIdentityId="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$primaryRegionResourceGroupName"\
-    "/providers/Microsoft.ManagedIdentity"\
-    "/userAssignedIdentities/$baseResourcePrefix-$ResourceNameSuffix-umi"
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/Microsoft.ManagedIdentity"\
+"/userAssignedIdentities/$baseResourcePrefix-$ResourceNameSuffix-umi"
 
 # ======================================================================================================================
 # PREPARE CUSTOMER-MANAGED TDE PROTECTOR KEY IN KEY VAULT
@@ -165,9 +165,9 @@ userAssignedManagedIdentityId="/subscriptions/$subscriptionId"\
 # user assigned managed identity permission to access the key.
 echo "Assigning 'Key Vault Crypto Officer' role to the user '$AadUserPrincipalName' for the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
 scope="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$primaryRegionResourceGroupName"\
-    "/providers/Microsoft.KeyVault"\
-    "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/Microsoft.KeyVault"\
+"/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"
 az role assignment create \
     --role 'Key Vault Crypto Officer' \
     --assignee-object-id "$userId" \
@@ -199,10 +199,10 @@ while [[ "$servicePrincipalId" == "" ]] {
 # on the key in the Key Vault.
 echo "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$ResourceNameSuffix-umi' for the key '$baseResourcePrefix-$ResourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
 $scope="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$primaryRegionResourceGroupName"\
-    "/providers/Microsoft.KeyVault"\
-    "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"\
-    "/keys/$baseResourcePrefix-$ResourceNameSuffix-tdeprotector"
+"/resourcegroups/$primaryRegionResourceGroupName"\
+"/providers/Microsoft.KeyVault"\
+"/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"\
+"/keys/$baseResourcePrefix-$ResourceNameSuffix-tdeprotector"
 az role assignment create \
     --role 'Key Vault Crypto Service Encryption User' \
     --assignee-object-id "$servicePrincipalId" \
