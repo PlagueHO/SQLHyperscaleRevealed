@@ -101,12 +101,12 @@ fi
 
 # Variables to help with resource naming in the script.
 baseResourcePrefix='sqlhr'
-primaryRegionPrefix="$($baseResourcePrefix)01"
-failoverRegionPrefix="$($baseResourcePrefix)02"
-primaryRegionResourceGroupName="$primaryRegionPrefix-$resourceNameSuffix-rg"
-failoverRegionResourceGroupName="$failoverRegionPrefix-$resourceNameSuffix-rg"
+primaryRegionPrefix=$baseResourcePrefix'01'
+failoverRegionPrefix="$baseResourcePrefix'02'
+primaryRegionResourceGroupName=$primaryRegionPrefix'-'$resourceNameSuffix'-rg'
+failoverRegionResourceGroupName=$failoverRegionPrefix'-'$resourceNameSuffix'-rg'
 subscriptionId="$(az account list --query "[?isDefault].id" -o tsv)"
-userId="az ad user show --id $AadUserPrincipalName --query 'id' -o tsv"
+userId="$(az ad user show --id $AadUserPrincipalName --query 'id' -o tsv)"
 privateZone='privatelink.database.windows.net'
 
 # ======================================================================================================================
