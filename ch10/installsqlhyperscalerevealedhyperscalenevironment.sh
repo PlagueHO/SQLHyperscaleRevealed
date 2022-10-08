@@ -171,7 +171,7 @@ scope="/subscriptions/$subscriptionId"\
 az role assignment create \
     --role 'Key Vault Crypto Officer' \
     --assignee-object-id "$userId" \
-    --Scope "$scope" \
+    --scope "$scope" \
     --output none
 
 # Generate the TDE protector key in the Key Vault.
@@ -206,8 +206,8 @@ $scope="/subscriptions/$subscriptionId"\
 az role assignment create \
     --role 'Key Vault Crypto Service Encryption User' \
     --assignee-object-id "$servicePrincipalId" \
-    --Scope "$scope" \
-    --Output none
+    --scope "$scope" \
+    --output none
 
 # ======================================================================================================================
 # DEPLOY LOGICAL SERVER IN PRIMARY REGION
@@ -218,33 +218,20 @@ az role assignment create \
 # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
 # with the Set-AzSqlServerActiveDirectoryAdministrator command.
 echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-$sqlAdministratorPassword = (-join ((48..57) + (97..122) | Get-Random -Count 15 | ForEach-Object { [char]$_} )) + '!'
-$sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
-$newAzSqlServer_parameters = @{
-    ServerName = "$primaryRegionPrefix-$ResourceNameSuffix"
-    ResourceGroupName = $primaryRegionResourceGroupName
-    Location = $primaryRegion
-    ServerVersion = '12.0'
-    PublicNetworkAccess = 'Disabled'
-    SqlAdministratorCredentials = $sqlAdministratorCredential
-    AssignIdentity = $true
-    IdentityType = 'UserAssigned'
-    UserAssignedIdentityId = $userAssignedManagedIdentityId
-    PrimaryUserAssignedIdentityId = $userAssignedManagedIdentityId
-    KeyId = $tdeProtectorKeyId
-    Tag = $tags
-}
-New-AzSqlServer @newAzSqlServer_parameters | Out-Null
-
-echo "Configure administartors of logical server '$primaryRegionPrefix-$ResourceNameSuffix' to be Azure AD 'SQL Administrators' group ..."
-$sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
-$setAzSqlServerActiveDirectoryAdministrator_parameters = @{
-    ObjectId = $sqlAdministratorsGroupId
-    DisplayName = 'SQL Administrators'
-    ServerName = "$primaryRegionPrefix-$ResourceNameSuffix"
-    ResourceGroupName = $primaryRegionResourceGroupName
-}
-Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
+sqlAdministratorsGroupSid="$(az ad group show --group 'SQL Administrators' --query 'id' -o tsv)"
+az sql server create \
+    --name "$primaryRegionPrefix-$ResourceNameSuffix" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --location "$primaryRegion" \
+    --enable-public-network false \
+    --enable-ad-only-auth \
+    --identity-type UserAssigned \
+    --assign-identity "$userAssignedManagedIdentityId" \
+    --external-admin-principal-type Group \
+    --external-admin-name 'SQL Administrators' \
+    --external-admin-sid "$sqlAdministratorsGroupSid" \
+    --tags Environment="$Environment" \
+    --output none
 
 # ======================================================================================================================
 # CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
