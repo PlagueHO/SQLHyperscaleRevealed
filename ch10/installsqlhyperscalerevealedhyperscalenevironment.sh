@@ -103,8 +103,8 @@ fi
 baseResourcePrefix='sqlhr'
 primaryRegionPrefix=$baseResourcePrefix'01'
 failoverRegionPrefix=$baseResourcePrefix'02'
-primaryRegionResourceGroupName=$primaryRegionPrefix'-'$ResourceNameSuffix'-rg'
-failoverRegionResourceGroupName=$failoverRegionPrefix'-'$ResourceNameSuffix'-rg'
+primaryRegionResourceGroupName=$primaryRegionPrefix-$ResourceNameSuffix-rg
+failoverRegionResourceGroupName=$failoverRegionPrefix-$ResourceNameSuffix-rg
 subscriptionId="$(az account list --query "[?isDefault].id" -o tsv)"
 userId="$(az ad user show --id $AadUserPrincipalName --query 'id' -o tsv)"
 privateZone='privatelink.database.windows.net'
@@ -120,21 +120,21 @@ echo "Adding 'management_subnet' and 'AzureBastionSubnet' to the primary virtual
 az network vnet subnet create \
     -g "$primaryRegionResourceGroupName" \
     --vnet-name "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'management_subnet' --address-prefixes 10.0.3.0/24
+    -n 'management_subnet' --address-prefixes 10.0.3.0/24 -o tsv
 az network vnet subnet create \
     -g "$primaryRegionResourceGroupName" \
     --vnet-name "$primaryRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'AzureBastionSubnet' --address-prefixes 10.0.4.0/24
+    -n 'AzureBastionSubnet' --address-prefixes 10.0.4.0/24 -o tsv
 
 echo "Adding 'management_subnet' and 'AzureBastionSubnet' to the failover virtual network '$baseResourcePrefix-$ResourceNameSuffix-vnet' ..."
 az network vnet subnet create \
     -g "$failoverRegionResourceGroupName" \
-    --vnet-name "$faliverRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'management_subnet' --address-prefixes 10.1.3.0/24
+    --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
+    -n 'management_subnet' --address-prefixes 10.1.3.0/24 -o tsv
 az network vnet subnet create \
     -g "$failoverRegionResourceGroupName" \
-    --vnet-name "$faliverRegionPrefix-$ResourceNameSuffix-vnet" \
-    -n 'AzureBastionSubnet' --address-prefixes 10.1.4.0/24
+    --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
+    -n 'AzureBastionSubnet' --address-prefixes 10.1.4.0/24 -o tsv
 
 # ======================================================================================================================
 # PREPARE USER ASSIGNED MANAGED IDENTITY FOR THE HYPERSCALE DATABASES
