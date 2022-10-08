@@ -200,7 +200,7 @@ done
 # Assign the Key Vault Crypto Service Encryption User role to the user assigned managed identity
 # on the key in the Key Vault.
 echo "Assigning 'Key Vault Crypto Service Encryption User' role to '$baseResourcePrefix-$ResourceNameSuffix-umi' for the key '$baseResourcePrefix-$ResourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
-$scope="/subscriptions/$subscriptionId"\
+scope="/subscriptions/$subscriptionId"\
 "/resourcegroups/$primaryRegionResourceGroupName"\
 "/providers/Microsoft.KeyVault"\
 "/vaults/$baseResourcePrefix-$ResourceNameSuffix-kv"\
@@ -244,14 +244,14 @@ az sql server create \
 echo "Creating the private endpoint '$primaryRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
 sqlServerResourceId="$(az sql server show --name "$primaryRegionPrefix-$ResourceNameSuffix" --resource-group "$primaryRegionResourceGroupName" --query 'id' -o tsv)"
 az network private-endpoint create \
-    --name "$primaryRegionPrefix-$ResourceNameSuffix-pl" \
+    --name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
     --resource-group "$primaryRegionResourceGroupName" \
     --location "$primaryRegion" \
     --vnet-name "$primaryRegionPrefix-vnet" \
     --subnet "data_subnet" \
     --private-connection-resource-id "$sqlServerResourceId" \
-    --group-ids sqlServer \
-    --connection-name "$primaryRegionPrefix-$ResourceNameSuffix-pe" \
+    --group-id sqlServer \
+    --connection-name "$primaryRegionPrefix-$ResourceNameSuffix-pl" \
     --output none
 
 # Create the private DNS zone.
