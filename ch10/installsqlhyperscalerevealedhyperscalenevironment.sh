@@ -231,6 +231,7 @@ az sql server create \
     --resource-group "$primaryRegionResourceGroupName" \
     --location "$primaryRegion" \
     --enable-ad-only-auth \
+    --assign-identity \
     --identity-type UserAssigned \
     --user-assigned-identity-id "$userAssignedManagedIdentityId" \
     --primary-user-assigned-identity-id "$userAssignedManagedIdentityId" \
