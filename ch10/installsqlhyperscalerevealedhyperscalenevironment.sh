@@ -225,7 +225,7 @@ az role assignment create \
 # ======================================================================================================================
 
 # Create the primary SQL logical server without AAD authentication.
-echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
+echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' and TDE protector key '$tdeProtectorKeyId'..."
 az sql server create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
@@ -418,7 +418,7 @@ if [[ "$NoFailoverRegion" == false ]]; then
     # ======================================================================================================================
 
     # Create the failover SQL logical server without AAD authentication.
-    echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
+    echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' and TDE protector key '$tdeProtectorKeyId'..."
     az sql server create \
         --name "$failoverRegionPrefix-$ResourceNameSuffix" \
         --resource-group "$failoverRegionResourceGroupName" \
