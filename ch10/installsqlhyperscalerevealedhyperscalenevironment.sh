@@ -239,12 +239,10 @@ az sql server create \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
     --output none
-sqlServerResourceId="/subscriptions/$subscriptionId"\
-"/resourcegroups/$primaryRegionResourceGroupName"\
-"/providers/Microsoft.Sql"\
-"/servers/$primaryRegionPrefix-$ResourceNameSuffix"
+
 az sql server tde-key set \
-    --ids "$sqlServerResourceId" \
+    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
+    --resource-group "$primaryRegionResourceGroupName" \
     --server-key-type AzureKeyVault \
     --kid "$tdeProtectorKeyId"
 
