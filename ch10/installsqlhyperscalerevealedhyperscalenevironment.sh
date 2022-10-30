@@ -219,12 +219,12 @@ az role assignment create \
     --assignee-principal-type ServicePrincipal \
     --scope "$scope" \
     --output none
-roleAssignmentId="$(az role assignment list --assignee '$servicePrincipalId' --role 'Key Vault Crypto Service Encryption User' --scope '$scope' --query '[0].id' -o tsv)"
+roleAssignmentId="$(az role assignment list --assignee "$servicePrincipalId" --role 'Key Vault Crypto Service Encryption User' --scope "$scope" --query '[0].id' -o tsv)"
 while [[ "$roleAssignmentId" == "" ]]
 do
     echo "Waiting for the Key Vault Crypto Service Encryption User role assignment of user assigned managed identity '$baseResourcePrefix-$ResourceNameSuffix-umi' to the TDE protector key to complete ..."
     sleep 5
-    roleAssignmentId="$(az role assignment list --assignee '$servicePrincipalId' --role 'Key Vault Crypto Service Encryption User' --scope '$scope' --query '[0].id' -o tsv)"
+    roleAssignmentId="$(az role assignment list --assignee "$servicePrincipalId" --role 'Key Vault Crypto Service Encryption User' --scope "$scope" --query '[0].id' -o tsv)"
 done
 
 # ======================================================================================================================
