@@ -243,7 +243,7 @@ done
 # ======================================================================================================================
 
 # Create the primary SQL logical server without AAD authentication.
-echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' ..."
+echo "Creating logical server '$primaryRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' and TDE Protector '$tdeProtectorKeyId' ..."
 az sql server create \
     --name "$primaryRegionPrefix-$ResourceNameSuffix" \
     --resource-group "$primaryRegionResourceGroupName" \
@@ -436,7 +436,7 @@ if [[ "$NoFailoverRegion" == false ]]; then
     # ======================================================================================================================
 
     # Create the failover SQL logical server without AAD authentication.
-    echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' ..."
+    echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' and TDE Protector '$tdeProtectorKeyId' ..."
     az sql server create \
         --name "$failoverRegionPrefix-$ResourceNameSuffix" \
         --resource-group "$failoverRegionResourceGroupName" \
