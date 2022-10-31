@@ -334,15 +334,21 @@ $databaseResourceId = (Get-AzSqlDatabase `
     -ServerName "$primaryRegionPrefix-$resourceNameSuffix" `
     -ResourceGroupName $primaryRegionResourceGroupName `
     -DatabaseName 'hyperscaledb').ResourceId
-$SetAzDiagnosticSetting_parameters = @{
+
+# Get the Diagnostic Settings category names for the Hyperscale database
+$log = @()
+$categories = Get-AzDiagnosticSettingCategory -ResourceId $databaseResourceId |
+    Where-Object -FilterScript { $_.CategoryType -eq 'Logs' }
+$categories | ForEach-Object -Process {
+    $log += New-AzDiagnosticSettingLogSettingsObject -Enabled $true -Category $_.Name -RetentionPolicyDay 7 -RetentionPolicyEnabled $true
+}
+$newAzDiagnosticSetting_parameters = @{
     ResourceId = $databaseResourceId
     Name = "Send all logs to $primaryRegionPrefix-$resourceNameSuffix-law"
     WorkspaceId = $logAnalyticsWorkspaceResourceId
-    Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
-    Enabled = $true
-    EnableLog = $true
+    Log = $log
 }
-Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
+New-AzDiagnosticSetting @newAzDiagnosticSetting_parameters | Out-Null
 
 if (-not $NoFailoverRegion.IsPresent) {
     # ======================================================================================================================
@@ -498,15 +504,21 @@ if (-not $NoFailoverRegion.IsPresent) {
         -ServerName "$failoverRegionPrefix-$resourceNameSuffix" `
         -ResourceGroupName $failoverRegionResourceGroupName `
         -DatabaseName 'hyperscaledb').ResourceId
-    $SetAzDiagnosticSetting_parameters = @{
+
+    # Get the Diagnostic Settings category names for the Hyperscale database
+    $log = @()
+    $categories = Get-AzDiagnosticSettingCategory -ResourceId $databaseResourceId |
+        Where-Object -FilterScript { $_.CategoryType -eq 'Logs' }
+    $categories | ForEach-Object -Process {
+        $log += New-AzDiagnosticSettingLogSettingsObject -Enabled $true -Category $_.Name -RetentionPolicyDay 7 -RetentionPolicyEnabled $true
+    }
+    $newAzDiagnosticSetting_parameters = @{
         ResourceId = $databaseResourceId
         Name = "Send all logs to $failoverRegionPrefix-$resourceNameSuffix-law"
         WorkspaceId = $logAnalyticsWorkspaceResourceId
-        Category = @('SQLInsights','AutomaticTuning','QueryStoreRuntimeStatistics','QueryStoreWaitStatistics','Errors','DatabaseWaitStatistics','Timeouts','Blocks','Deadlocks')
-        Enabled = $true
-        EnableLog = $true
+        Log = $log
     }
-    Set-AzDiagnosticSetting @setAzDiagnosticSetting_parameters | Out-Null
+    New-AzDiagnosticSetting @newAzDiagnosticSetting_parameters | Out-Null
 }
 
 # ======================================================================================================================
