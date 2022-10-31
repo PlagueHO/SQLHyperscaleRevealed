@@ -253,22 +253,11 @@ az sql server create \
     --identity-type UserAssigned \
     --user-assigned-identity-id "$userAssignedManagedIdentityId" \
     --primary-user-assigned-identity-id "$userAssignedManagedIdentityId" \
+    --key-id "$tdeProtectorKeyId" \
     --external-admin-principal-type Group \
     --external-admin-name 'SQL Administrators' \
     --external-admin-sid "$sqlAdministratorsGroupSid" \
     --output none
-
-echo "Assigning TDE protector key '$tdeProtectorKeyId' to logical server '$primaryRegionPrefix-$ResourceNameSuffix' ..."
-az sql server key create \
-    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
-    --resource-group "$primaryRegionResourceGroupName" \
-    --kid "$tdeProtectorKeyId"
-
-az sql server tde-key set \
-    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
-    --resource-group "$primaryRegionResourceGroupName" \
-    --server-key-type AzureKeyVault \
-    --kid "$tdeProtectorKeyId"
 
 # ======================================================================================================================
 # CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
@@ -461,18 +450,6 @@ if [[ "$NoFailoverRegion" == false ]]; then
         --external-admin-name 'SQL Administrators' \
         --external-admin-sid "$sqlAdministratorsGroupSid" \
         --output none
-
-    echo "Assigning TDE protector key '$tdeProtectorKeyId' to logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    az sql server key create \
-        --server "$failoverRegionPrefix-$ResourceNameSuffix" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --kid "$tdeProtectorKeyId"
-
-    az sql server tde-key set \
-        --server "$failoverRegionPrefix-$ResourceNameSuffix" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --server-key-type AzureKeyVault \
-        --kid "$tdeProtectorKeyId"
 
     # ======================================================================================================================
     # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
