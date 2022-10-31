@@ -199,7 +199,7 @@ az keyvault key create \
     --vault-name "$baseResourcePrefix-$ResourceNameSuffix-kv" \
     --kty RSA \
     --size 2048 \
-    --ops encrypt decrypt \
+    --ops wrapKey unwrapKey \
     --tags Environment="$Environment" \
     --output none
 tdeProtectorKeyId="$(az keyvault key show --name "$baseResourcePrefix-$ResourceNameSuffix-tdeprotector" --vault-name "$baseResourcePrefix-$ResourceNameSuffix-kv" --query 'key.kid' -o tsv)"
