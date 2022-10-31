@@ -183,6 +183,15 @@ az role assignment create \
     --scope "$scope" \
     --output none
 
+# Wait for the role assignment to complete
+roleAssignmentId="$(az role assignment list --assignee "$userId" --role 'Key Vault Crypto Officer' --scope "$scope" --query '[0].id' -o tsv)"
+while [[ "$roleAssignmentId" == "" ]]
+do
+    echo "Waiting for the Key Vault Crypto Officer role assignment of '$userId' to the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' to complete ..."
+    sleep 5
+    roleAssignmentId="$(az role assignment list --assignee "$userId" --role 'Key Vault Crypto Officer' --scope "$scope" --query '[0].id' -o tsv)"
+done
+
 # Generate the TDE protector key in the Key Vault.
 echo "Creating the TDE Protector Key '$baseResourcePrefix-$ResourceNameSuffix-tdeprotector' in the Key Vault '$baseResourcePrefix-$ResourceNameSuffix-kv' ..."
 az keyvault key create \
@@ -219,6 +228,15 @@ az role assignment create \
     --assignee-principal-type ServicePrincipal \
     --scope "$scope" \
     --output none
+
+# Wait for the role assignment to complete
+roleAssignmentId="$(az role assignment list --assignee "$servicePrincipalId" --role 'Key Vault Crypto Service Encryption User' --scope "$scope" --query '[0].id' -o tsv)"
+while [[ "$roleAssignmentId" == "" ]]
+do
+    echo "Waiting for the Key Vault Crypto Service Encryption User role assignment of user assigned managed identity '$baseResourcePrefix-$ResourceNameSuffix-umi' to the TDE protector key to complete ..."
+    sleep 5
+    roleAssignmentId="$(az role assignment list --assignee "$servicePrincipalId" --role 'Key Vault Crypto Service Encryption User' --scope "$scope" --query '[0].id' -o tsv)"
+done
 
 # ======================================================================================================================
 # DEPLOY LOGICAL SERVER IN PRIMARY REGION
