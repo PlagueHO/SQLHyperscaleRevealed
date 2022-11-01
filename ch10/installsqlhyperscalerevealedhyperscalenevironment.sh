@@ -431,102 +431,102 @@ az monitor diagnostic-settings create \
     --output none
 
 if [[ "$NoFailoverRegion" == false ]]; then
-    # ======================================================================================================================
-    # DEPLOY LOGICAL SERVER IN FAILOVER REGION
-    # ======================================================================================================================
+# ======================================================================================================================
+# DEPLOY LOGICAL SERVER IN FAILOVER REGION
+# ======================================================================================================================
 
-    # Create the failover SQL logical server without AAD authentication.
-    echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' and TDE Protector '$tdeProtectorKeyId' ..."
-    az sql server create \
-        --name "$failoverRegionPrefix-$ResourceNameSuffix" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --location "$failoverRegion" \
-        --enable-ad-only-auth \
-        --identity-type UserAssigned \
-        --user-assigned-identity-id "$userAssignedManagedIdentityId" \
-        --primary-user-assigned-identity-id "$userAssignedManagedIdentityId" \
-        --key-id "$tdeProtectorKeyId" \
-        --external-admin-principal-type Group \
-        --external-admin-name 'SQL Administrators' \
-        --external-admin-sid "$sqlAdministratorsGroupSid" \
-        --output none
+# Create the failover SQL logical server without AAD authentication.
+echo "Creating logical server '$failoverRegionPrefix-$ResourceNameSuffix' with user assigned managed identity '$userAssignedManagedIdentityId' and TDE Protector '$tdeProtectorKeyId' ..."
+az sql server create \
+    --name "$failoverRegionPrefix-$ResourceNameSuffix" \
+    --resource-group "$failoverRegionResourceGroupName" \
+    --location "$failoverRegion" \
+    --enable-ad-only-auth \
+    --identity-type UserAssigned \
+    --user-assigned-identity-id "$userAssignedManagedIdentityId" \
+    --primary-user-assigned-identity-id "$userAssignedManagedIdentityId" \
+    --key-id "$tdeProtectorKeyId" \
+    --external-admin-principal-type Group \
+    --external-admin-name 'SQL Administrators' \
+    --external-admin-sid "$sqlAdministratorsGroupSid" \
+    --output none
 
-    # ======================================================================================================================
-    # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
-    # ======================================================================================================================
+# ======================================================================================================================
+# CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
+# ======================================================================================================================
 
-    # Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
-    # Create the private link service connection
-    echo "Creating the private endpoint '$failoverRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    sqlServerResourceId="/subscriptions/$subscriptionId"\
-    "/resourcegroups/$failoverRegionResourceGroupName"\
-    "/providers/Microsoft.Sql"\
-    "/servers/$failoverRegionPrefix-$ResourceNameSuffix"
-    az network private-endpoint create \
-        --name "$failoverRegionPrefix-$ResourceNameSuffix-pe" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --location "$failoverRegion" \
-        --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
-        --subnet "data_subnet" \
-        --private-connection-resource-id "$sqlServerResourceId" \
-        --group-id sqlServer \
-        --connection-name "$failoverRegionPrefix-$ResourceNameSuffix-pl" \
-        --output none
+# Create the private endpoint, and connect the logical server to it and the virtal network and configure the DNS zone.
+# Create the private link service connection
+echo "Creating the private endpoint '$failoverRegionPrefix-$ResourceNameSuffix-pl' for the logical server '$failoverRegionPrefix-$ResourceNameSuffix' ..."
+sqlServerResourceId="/subscriptions/$subscriptionId"\
+"/resourcegroups/$failoverRegionResourceGroupName"\
+"/providers/Microsoft.Sql"\
+"/servers/$failoverRegionPrefix-$ResourceNameSuffix"
+az network private-endpoint create \
+    --name "$failoverRegionPrefix-$ResourceNameSuffix-pe" \
+    --resource-group "$failoverRegionResourceGroupName" \
+    --location "$failoverRegion" \
+    --vnet-name "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
+    --subnet "data_subnet" \
+    --private-connection-resource-id "$sqlServerResourceId" \
+    --group-id sqlServer \
+    --connection-name "$failoverRegionPrefix-$ResourceNameSuffix-pl" \
+    --output none
 
-    # Create the private DNS zone.
-    echo "Creating the private DNS Zone for '$privateZone' in resource group '$failoverRegionResourceGroupName' ..."
-    az network private-dns zone create \
-        --name "$privateZone" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --output none
+# Create the private DNS zone.
+echo "Creating the private DNS Zone for '$privateZone' in resource group '$failoverRegionResourceGroupName' ..."
+az network private-dns zone create \
+    --name "$privateZone" \
+    --resource-group "$failoverRegionResourceGroupName" \
+    --output none
 
-    # Connect the private DNS Zone to the failover region VNET.
-    echo "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$ResourceNameSuffix-vnet' ..."
-    az network private-dns link vnet create \
-        --name "$failoverRegionPrefix-$ResourceNameSuffix-dnslink" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --zone-name "$privateZone" \
-        --virtual-network "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
-        --registration-enabled false \
-        --output none
+# Connect the private DNS Zone to the failover region VNET.
+echo "Connecting the private DNS Zone '$privateZone' to the virtual network '$failoverRegionPrefix-$ResourceNameSuffix-vnet' ..."
+az network private-dns link vnet create \
+    --name "$failoverRegionPrefix-$ResourceNameSuffix-dnslink" \
+    --resource-group "$failoverRegionResourceGroupName" \
+    --zone-name "$privateZone" \
+    --virtual-network "$failoverRegionPrefix-$ResourceNameSuffix-vnet" \
+    --registration-enabled false \
+    --output none
 
-    # Create the DNS zone group for the private endpoint.
-    echo "Creating the private DNS Zone Group '$failoverRegionPrefix-$ResourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$ResourceNameSuffix-pe' ..."
-    az network private-endpoint dns-zone-group create \
-        --name "$failoverRegionPrefix-$ResourceNameSuffix-zonegroup" \
-        --resource-group "$failoverRegionResourceGroupName" \
-        --endpoint-name "$failoverRegionPrefix-$ResourceNameSuffix-pe" \
-        --private-dns-zone "$privateZone" \
-        --zone-name "$privateZone" \
-        --output none
+# Create the DNS zone group for the private endpoint.
+echo "Creating the private DNS Zone Group '$failoverRegionPrefix-$ResourceNameSuffix-zonegroup' and connecting it to the '$failoverRegionPrefix-$ResourceNameSuffix-pe' ..."
+az network private-endpoint dns-zone-group create \
+    --name "$failoverRegionPrefix-$ResourceNameSuffix-zonegroup" \
+    --resource-group "$failoverRegionResourceGroupName" \
+    --endpoint-name "$failoverRegionPrefix-$ResourceNameSuffix-pe" \
+    --private-dns-zone "$privateZone" \
+    --zone-name "$privateZone" \
+    --output none
 
-    # ======================================================================================================================
-    # CREATE REPLICA HYPERSCALE DATABASE IN FAILOVER REGION
-    # ======================================================================================================================
+# ======================================================================================================================
+# CREATE REPLICA HYPERSCALE DATABASE IN FAILOVER REGION
+# ======================================================================================================================
 
-    # Establish the active geo-replication from the primary region to the failover region.
-    echo "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$ResourceNameSuffix' to '$failoverRegionPrefix-$ResourceNameSuffix' ..."
-    az sql db replica create \
-        --name "hyperscaledb" \
-        --resource-group "$primaryRegionResourceGroupName" \
-        --server "$primaryRegionPrefix-$ResourceNameSuffix" \
-        --partner-resource-group "$failoverRegionResourceGroupName" \
-        --partner-server "$failoverRegionPrefix-$ResourceNameSuffix" \
-        --secondary-type Geo \
-        --family Gen5 \
-        --capacity 2 \
-        --zone-redundant false \
-        --ha-replicas 1 \
-        --read-scale "Enabled" \
-        --output none
+# Establish the active geo-replication from the primary region to the failover region.
+echo "Creating the geo-replica 'hyperscaledb' from '$primaryRegionPrefix-$ResourceNameSuffix' to '$failoverRegionPrefix-$ResourceNameSuffix' ..."
+az sql db replica create \
+    --name "hyperscaledb" \
+    --resource-group "$primaryRegionResourceGroupName" \
+    --server "$primaryRegionPrefix-$ResourceNameSuffix" \
+    --partner-resource-group "$failoverRegionResourceGroupName" \
+    --partner-server "$failoverRegionPrefix-$ResourceNameSuffix" \
+    --secondary-type Geo \
+    --family Gen5 \
+    --capacity 2 \
+    --zone-redundant false \
+    --ha-replicas 1 \
+    --read-scale "Enabled" \
+    --output none
 
-    # ======================================================================================================================
-    # CONFIGURE DIAGNOSTIC AND AUDIT LOGS TO SEND TO LOG ANALYTICS
-    # ======================================================================================================================
+# ======================================================================================================================
+# CONFIGURE DIAGNOSTIC AND AUDIT LOGS TO SEND TO LOG ANALYTICS
+# ======================================================================================================================
 
-    # Enable sending failover logical server audit logs to the Log Analytics workspace
-    echo "Configuring the failover logical server '$failoverRegionPrefix-$ResourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
-    logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
+# Enable sending failover logical server audit logs to the Log Analytics workspace
+echo "Configuring the failover logical server '$failoverRegionPrefix-$ResourceNameSuffix' to send audit logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
+logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
 "/resourcegroups/$failoverRegionResourceGroupName"\
 "/providers/microsoft.operationalinsights"\
 "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
@@ -538,89 +538,89 @@ if [[ "$NoFailoverRegion" == false ]]; then
         --state Enabled \
         --output none
 
-    # Enable sending database diagnostic logs to the Log Analytics workspace
-    echo "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
-    logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
+# Enable sending database diagnostic logs to the Log Analytics workspace
+echo "Configuring the failover hyperscale database 'hyperscaledb' to send all diagnostic logs to the Log Analytics workspace '$failoverRegionPrefix-$ResourceNameSuffix-law' ..."
+logAnalyticsWorkspaceResourceId="/subscriptions/$subscriptionId"\
 "/resourcegroups/$failoverRegionResourceGroupName"\
 "/providers/microsoft.operationalinsights"\
 "/workspaces/$failoverRegionPrefix-$ResourceNameSuffix-law"
-    databaseResourceId="/subscriptions/$subscriptionId"\
+databaseResourceId="/subscriptions/$subscriptionId"\
 "/resourcegroups/$failoverRegionResourceGroupName"\
 "/providers/Microsoft.Sql"\
 "/servers/$failoverRegionPrefix-$ResourceNameSuffix"\
 "/databases/hyperscaledb"
-    logs='[
-        {
-            "category": "SQLInsights",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "AutomaticTuning",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "QueryStoreRuntimeStatistics",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "Errors",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "DatabaseWaitStatistics",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "Timeouts",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "Blocks",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
-        },
-        {
-            "category": "Deadlocks",
-            "enabled": true,
-            "retentionPolicy": {
-                "enabled": false,
-                "days": 0
-            }
+logs='[
+    {
+        "category": "SQLInsights",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
         }
-    ]'
-    az monitor diagnostic-settings create \
-        --name "Send all logs to $failoverRegionPrefix-$ResourceNameSuffix-law" \
-        --resource "$databaseResourceId" \
-        --logs "$logs" \
-        --workspace "$logAnalyticsWorkspaceResourceId" \
-        --output none
+    },
+    {
+        "category": "AutomaticTuning",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    },
+    {
+        "category": "QueryStoreRuntimeStatistics",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    },
+    {
+        "category": "Errors",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    },
+    {
+        "category": "DatabaseWaitStatistics",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    },
+    {
+        "category": "Timeouts",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    },
+    {
+        "category": "Blocks",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    },
+    {
+        "category": "Deadlocks",
+        "enabled": true,
+        "retentionPolicy": {
+            "enabled": false,
+            "days": 0
+        }
+    }
+]'
+az monitor diagnostic-settings create \
+    --name "Send all logs to $failoverRegionPrefix-$ResourceNameSuffix-law" \
+    --resource "$databaseResourceId" \
+    --logs "$logs" \
+    --workspace "$logAnalyticsWorkspaceResourceId" \
+    --output none
 fi
 
 # ======================================================================================================================
