@@ -59,13 +59,13 @@ param (
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [System.String]
-    $Environment = 'SQL Hyperscale Revealed demo',
-
-    [Parameter()]
-    [Switch]
-    $NoFailoverRegion
+    $Environment = 'SQL Hyperscale Revealed demo'
 )
 #>
+
+# Lookup the SID for the SQL Administrators group. This needs to be passed in to the
+# Bicep template to configure the Hyperscale logical server administrators.
+$sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
 
 New-AzDeployment `
     -Name "sql-hyperscale-revealed-env-$resourceNameSuffix-$(Get-Date -Format 'yyyyMMddHHmm')" `
@@ -76,4 +76,5 @@ New-AzDeployment `
         'failoverRegion' = $FailoverRegion
         'resourceNameSuffix' = $ResourceNameSuffix
         'environment' = $Environment
+        'sqlAdministratorsGroupId' = $sqlAdministratorsGroupId
     }

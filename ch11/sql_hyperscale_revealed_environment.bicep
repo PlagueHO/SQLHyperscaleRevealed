@@ -10,6 +10,10 @@ param resourceNameSuffix string
 @description('The envrionment tag that will be used to tag all resources created by this template')
 param environment string = 'SQL Hyperscale Revealed demo'
 
+@description('The id of the SQL Administrators Azure AD Group')
+param sqlAdministratorsGroupId string
+
+
 // Deploy to the subscription scope so we can create resource groups
 targetScope = 'subscription'
 
@@ -21,7 +25,7 @@ var primaryRegionResourceGroupName = '${primaryRegionPrefix}-${resourceNameSuffi
 var failoverRegionResourceGroupName = '${failoverRegionPrefix}-${resourceNameSuffix}-rg'
 var privateZone = 'privatelink.${az.environment().suffixes.sqlServerHostname}'
 
-// Create the resource groups
+// Resource Groups
 resource primaryResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: primaryRegionResourceGroupName
   location: primaryRegion
@@ -29,7 +33,6 @@ resource primaryResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = 
     Environment: environment
   }
 }
-
 
 resource failoverResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: failoverRegionResourceGroupName
@@ -39,7 +42,7 @@ resource failoverResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' =
   }
 }
 
-// Create/update the virtual networks
+// Virtual networks
 var primaryVirtualNetworkName = 'sqlhr01-${resourceNameSuffix}-vnet'
 
 module primaryVirtualNetwork './modules/virtual_network_with_mgmt.bicep' = {
@@ -74,7 +77,7 @@ module failoverVirtualNetwork './modules/virtual_network_with_mgmt.bicep' = {
   }
 }
 
-// Create User Assigned Managed Identity
+// User Assigned Managed Identity for Logical Servers to access Key Vault
 module userAssignedManagedIdentity './modules/user_assigned_managed_identity.bicep' = {
   name: 'userAssignedManagedIdentity'
   scope: failoverResourceGroup
@@ -85,7 +88,7 @@ module userAssignedManagedIdentity './modules/user_assigned_managed_identity.bic
   }
 }
 
-// Create Key Vault with TDE Protector Key and grant Key Vault Crypto Service Encryption Role
+// Key Vault with TDE Protector Key and grant Key Vault Crypto Service Encryption Role
 // to the User Assigned Managed Identity for the TDE Protector Key
 var keyVaultName = 'sqlhr-${resourceNameSuffix}-kv'
 
@@ -98,7 +101,7 @@ module keyVault './modules/key_vault_with_tde_protector.bicep' = {
     environment: environment
     tenantId: subscription().tenantId
     keyName: '${baseResourcePrefix}-${resourceNameSuffix}-tdeprotector'
-    managedIdentityId: userAssignedManagedIdentity.outputs.managedIdentityId
+    managedIdentity: userAssignedManagedIdentity.outputs.userAssignedManagedIdentity
   }
 }
 
@@ -124,5 +127,20 @@ module failoverLogAnalyticsWorkspace './modules/log_analytics_workspace.bicep' =
     name: failoverLogAnalyticsWorkspaceName
     location: failoverRegion
     environment: environment
+  }
+}
+
+// Primary Azure SQL Logical Server
+module primaryLogicalServer './modules/sql_logical_server.bicep' = {
+  name: 'primaryLogicalServer'
+  scope: primaryResourceGroup
+  params: {
+    name: '${primaryRegionPrefix}-${resourceNameSuffix}'
+    location: primaryRegion
+    environment: environment
+    tenantId: subscription().tenantId
+    managedIdentity: userAssignedManagedIdentity.outputs.userAssignedManagedIdentity
+    tdeProtectorKey: keyVault.outputs.tdeProtectorKey
+    sqlAdministratorsGroupId: sqlAdministratorsGroupId
   }
 }

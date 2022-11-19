@@ -14,3 +14,5 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12
     Environment: environment
   }
 }
+
+output logAnalyticsWorkspace object = logAnalyticsWorkspace
