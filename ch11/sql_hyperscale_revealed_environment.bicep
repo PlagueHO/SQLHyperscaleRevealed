@@ -19,7 +19,7 @@ var primaryRegionPrefix = '${baseResourcePrefix}01'
 var failoverRegionPrefix = '${baseResourcePrefix}02'
 var primaryRegionResourceGroupName = '${primaryRegionPrefix}-${resourceNameSuffix}-rg'
 var failoverRegionResourceGroupName = '${failoverRegionPrefix}-${resourceNameSuffix}-rg'
-var privateZone = '${az.environment().suffixes.sqlServerHostname}.database.windows.net'
+var privateZone = 'privatelink.${az.environment().suffixes.sqlServerHostname}'
 
 // Create the resource groups
 resource primaryResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
