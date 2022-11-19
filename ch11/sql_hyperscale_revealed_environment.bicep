@@ -78,11 +78,13 @@ module failoverVirtualNetwork './modules/virtual_network_with_mgmt.bicep' = {
 }
 
 // User Assigned Managed Identity for Logical Servers to access Key Vault
+var userAssignedManagedIdentityName = '${baseResourcePrefix}-${resourceNameSuffix}-umi'
+
 module userAssignedManagedIdentity './modules/user_assigned_managed_identity.bicep' = {
   name: 'userAssignedManagedIdentity'
   scope: primaryResourceGroup
   params: {
-    name: '${baseResourcePrefix}-${resourceNameSuffix}-umi'
+    name: userAssignedManagedIdentityName
     location: primaryRegion
     environment: environment
   }
@@ -101,7 +103,7 @@ module keyVault './modules/key_vault_with_tde_protector.bicep' = {
     environment: environment
     tenantId: subscription().tenantId
     keyName: '${baseResourcePrefix}-${resourceNameSuffix}-tdeprotector'
-    managedIdentityId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentity.id
+    managedIdentityName: userAssignedManagedIdentityName
   }
 }
 
@@ -139,7 +141,7 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     location: primaryRegion
     environment: environment
     tenantId: subscription().tenantId
-    managedIdentity: userAssignedManagedIdentity.outputs.userAssignedManagedIdentity
+    managedIdentityName: userAssignedManagedIdentityName
     tdeProtectorKey: keyVault.outputs.tdeProtectorKey
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
   }
