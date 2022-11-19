@@ -144,3 +144,5 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
   }
 }
+
+output userAssignedManagedIdentity object = userAssignedManagedIdentity
