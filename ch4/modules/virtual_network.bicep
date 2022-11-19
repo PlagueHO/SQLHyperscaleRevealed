@@ -33,4 +33,3 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
     Environment: environment
   }
 }
-
