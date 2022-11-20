@@ -142,7 +142,7 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     environment: environment
     tenantId: subscription().tenantId
     userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityResourceId
-    tdeProtectorKeyId: keyVault.outputs.tdeProtectorKey.id
+    tdeProtectorKeyId: keyVault.outputs.tdeProtectorKeyId
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
   }
 }

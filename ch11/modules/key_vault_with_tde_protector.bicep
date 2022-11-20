@@ -42,6 +42,7 @@ resource keyVaultCryptoServiceEncryptionRoleDefinition 'Microsoft.Authorization/
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(subscription().id, userAssignedManagedIdentityPrincipalId, keyVaultCryptoServiceEncryptionRoleDefinition.id)
+  scope: keyVault
   properties: {
     roleDefinitionId: keyVaultCryptoServiceEncryptionRoleDefinition.id
     principalId: userAssignedManagedIdentityPrincipalId
@@ -49,5 +50,4 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-output keyVault object = keyVault
-output tdeProtectorKey object = tdeProtectorKey
+output tdeProtectorKeyId string = tdeProtectorKey.id
