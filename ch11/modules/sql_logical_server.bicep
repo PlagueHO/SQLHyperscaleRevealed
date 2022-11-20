@@ -78,9 +78,12 @@ resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLin
       id: vnetId
     }
   }
+  tags: {
+    Environment: environment
+  }
 }
 
-resource pvtEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2021-05-01' = {
+resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2021-05-01' = {
   name: '${name}-zonegroup'
   properties: {
     privateDnsZoneConfigs: [
@@ -121,9 +124,12 @@ resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05
 }
 
 resource sqlLogicalServerAuditingSettings 'Microsoft.Sql/servers/auditingSettings@2022-05-01-preview' = {
-  name: '${sqlLogicalServer.name}/default'
+  name: 'default'
+  parent: sqlLogicalServer
   properties: {
     state: 'Enabled'
     isAzureMonitorTargetEnabled: true
   }
 }
+
+output logicalServerName string = sqlLogicalServer.name

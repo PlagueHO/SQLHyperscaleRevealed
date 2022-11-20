@@ -166,3 +166,5 @@ module primaryLogicalDatabase './modules/sql_hyperscale_primary_database.bicep' 
     primaryLogicalServer
   ]
 }
+
+output primaryLogicalServerName string = primaryLogicalServer.outputs.logicalServerName
