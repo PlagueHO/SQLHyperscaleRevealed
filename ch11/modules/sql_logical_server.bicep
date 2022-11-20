@@ -119,9 +119,6 @@ resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05
     ]
     workspaceId: logAnalyticsWorkspaceId
   }
-  dependsOn: [
-    sqlLogicalServer // This is required to ensure the diagnostic setting is created after the SQL logical server
-  ]
 }
 
 resource sqlLogicalServerAuditingSettings 'Microsoft.Sql/servers/auditingSettings@2022-05-01-preview' = {
