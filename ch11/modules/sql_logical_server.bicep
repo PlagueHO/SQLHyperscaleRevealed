@@ -69,8 +69,8 @@ resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
 }
 
 resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: privateDnsZone
   name:  '${name}-dnslink'
+  parent: privateDnsZone
   location: 'global'
   properties: {
     registrationEnabled: false
@@ -85,6 +85,7 @@ resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLin
 
 resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2021-05-01' = {
   name: '${name}-zonegroup'
+  parent: sqlLogicalServerPrivateEndpoint
   properties: {
     privateDnsZoneConfigs: [
       {
@@ -95,9 +96,6 @@ resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
       }
     ]
   }
-  dependsOn: [
-    sqlLogicalServerPrivateEndpoint
-  ]
 }
 
 resource masterDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' existing = {
