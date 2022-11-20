@@ -207,3 +207,4 @@ module failoverHyperscaleDatabase './modules/sql_hyperscale_database_replica.bic
 output primaryLogicalServerName string = primaryLogicalServer.outputs.logicalServerName
 output primaryHyperscaleDatabaseName string = primaryHyperscaleDatabase.outputs.sqlHyperscaleDatabaseName
 output failoverLogicalServerName string = failoverLogicalServer.outputs.logicalServerName
+output failoverHyperscaleDatabaseName string = failoverHyperscaleDatabase.outputs.sqlHyperscaleDatabaseName
