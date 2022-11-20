@@ -47,3 +47,9 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-01-01' = {
     Environment: environment
   }
 }
+
+output vnetId string = virtualNetwork.id
+output appSubnetId string = virtualNetwork.properties.subnets[0].id
+output dataSubnetId string = virtualNetwork.properties.subnets[1].id
+output managementSubnetId string = virtualNetwork.properties.subnets[2].id
+output azureBastionSubnetId string = virtualNetwork.properties.subnets[1].id

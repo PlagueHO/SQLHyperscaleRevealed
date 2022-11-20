@@ -23,7 +23,6 @@ var primaryRegionPrefix = '${baseResourcePrefix}01'
 var failoverRegionPrefix = '${baseResourcePrefix}02'
 var primaryRegionResourceGroupName = '${primaryRegionPrefix}-${resourceNameSuffix}-rg'
 var failoverRegionResourceGroupName = '${failoverRegionPrefix}-${resourceNameSuffix}-rg'
-var privateZone = 'privatelink.${az.environment().suffixes.sqlServerHostname}'
 
 // Resource Groups
 resource primaryResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -92,7 +91,7 @@ module userAssignedManagedIdentity './modules/user_assigned_managed_identity.bic
 
 // Key Vault with TDE Protector Key and grant Key Vault Crypto Service Encryption Role
 // to the User Assigned Managed Identity for the TDE Protector Key
-var keyVaultName = 'sqlhr-${resourceNameSuffix}-kv'
+var keyVaultName = '${baseResourcePrefix}-${resourceNameSuffix}-kv'
 
 module keyVault './modules/key_vault_with_tde_protector.bicep' = {
   name: 'keyVault'
@@ -108,7 +107,7 @@ module keyVault './modules/key_vault_with_tde_protector.bicep' = {
 }
 
 // Create Log Analytics workspaces
-var primaryLogAnalyticsWorkspaceName = 'sqlhr01-${resourceNameSuffix}-law'
+var primaryLogAnalyticsWorkspaceName = '${primaryRegionPrefix}-${resourceNameSuffix}-law'
 
 module primaryLogAnalyticsWorkspace './modules/log_analytics_workspace.bicep' = {
   name: 'primaryLogAnalyticsWorkspace'
@@ -120,7 +119,7 @@ module primaryLogAnalyticsWorkspace './modules/log_analytics_workspace.bicep' = 
   }
 }
 
-var failoverLogAnalyticsWorkspaceName = 'sqlhr02-${resourceNameSuffix}-law'
+var failoverLogAnalyticsWorkspaceName = '${failoverRegionPrefix}-${resourceNameSuffix}-law'
 
 module failoverLogAnalyticsWorkspace './modules/log_analytics_workspace.bicep' = {
   name: 'failoverLogAnalyticsWorkspace'
@@ -144,6 +143,8 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityResourceId
     tdeProtectorKeyId: keyVault.outputs.tdeProtectorKeyId
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
+    vnetId: primaryVirtualNetwork.outputs.vnetId
+    dataSubnetId: primaryVirtualNetwork.outputs.dataSubnetId
     logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceName
     logAnalyticsWorkspaceId: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
   }
