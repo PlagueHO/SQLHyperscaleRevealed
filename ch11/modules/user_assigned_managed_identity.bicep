@@ -10,4 +10,4 @@ resource userAssignedManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIden
   }
 }
 
-output userAssignedManagedIdentity object = userAssignedManagedIdentity
+output clientId string = userAssignedManagedIdentity.properties.clientId
