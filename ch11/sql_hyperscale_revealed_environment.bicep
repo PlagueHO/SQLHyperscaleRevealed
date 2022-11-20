@@ -146,3 +146,15 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
   }
 }
+
+// Primary Azure SQL Hyperscale Database
+module primaryLogicalDatabase './modules/sql_hyperscale_database.bicep' = {
+  name: 'primaryDatabase'
+  scope: primaryResourceGroup
+  params: {
+    name: 'hyperscaledb'
+    location: primaryRegion
+    environment: environment
+    logicalServerName: '${primaryRegionPrefix}-${resourceNameSuffix}'
+  }
+}
