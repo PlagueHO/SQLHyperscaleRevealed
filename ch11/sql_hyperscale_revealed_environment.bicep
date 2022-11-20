@@ -144,7 +144,7 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityResourceId
     tdeProtectorKeyId: keyVault.outputs.tdeProtectorKeyId
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
-    logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.name
+    logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceName
     logAnalyticsWorkspaceId: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
   }
 }
@@ -158,7 +158,7 @@ module primaryLogicalDatabase './modules/sql_hyperscale_primary_database.bicep' 
     location: primaryRegion
     environment: environment
     logicalServerName: '${primaryRegionPrefix}-${resourceNameSuffix}'
-    logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.name
+    logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceName
     logAnalyticsWorkspaceId: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
   }
 }
