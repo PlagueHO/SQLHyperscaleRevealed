@@ -35,10 +35,9 @@ resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   }
 }
 
-resource masterDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
+resource masterDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' existing = {
   name: 'master'
   parent: sqlLogicalServer
-  location: location
 }
 
 resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
