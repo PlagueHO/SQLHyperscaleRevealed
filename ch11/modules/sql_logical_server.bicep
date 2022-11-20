@@ -61,7 +61,7 @@ resource sqlLogicalServerPrivateEndpoint 'Microsoft.Network/privateEndpoints@202
   }
 }
 
-var privateZoneName = 'privatelink.${az.environment().suffixes.sqlServerHostname}'
+var privateZoneName = 'privatelink${az.environment().suffixes.sqlServerHostname}'
 
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateZoneName
