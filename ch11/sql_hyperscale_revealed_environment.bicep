@@ -144,11 +144,13 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityResourceId
     tdeProtectorKeyId: keyVault.outputs.tdeProtectorKeyId
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
+    logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.name
+    logAnalyticsWorkspaceId: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
   }
 }
 
 // Primary Azure SQL Hyperscale Database
-module primaryLogicalDatabase './modules/sql_hyperscale_database.bicep' = {
+module primaryLogicalDatabase './modules/sql_hyperscale_primary_database.bicep' = {
   name: 'primaryDatabase'
   scope: primaryResourceGroup
   params: {
@@ -156,5 +158,7 @@ module primaryLogicalDatabase './modules/sql_hyperscale_database.bicep' = {
     location: primaryRegion
     environment: environment
     logicalServerName: '${primaryRegionPrefix}-${resourceNameSuffix}'
+    logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.name
+    logAnalyticsWorkspaceId: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
   }
 }
