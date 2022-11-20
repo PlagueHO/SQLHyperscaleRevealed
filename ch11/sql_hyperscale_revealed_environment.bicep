@@ -103,7 +103,7 @@ module keyVault './modules/key_vault_with_tde_protector.bicep' = {
     environment: environment
     tenantId: subscription().tenantId
     keyName: '${baseResourcePrefix}-${resourceNameSuffix}-tdeprotector'
-    userAssignedManagedIdentityPrincipalId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentity.properties.principalId
+    userAssignedManagedIdentityPrincipalId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityPrincipalId
   }
 }
 
@@ -141,7 +141,7 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
     location: primaryRegion
     environment: environment
     tenantId: subscription().tenantId
-    userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentity.id
+    userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityResourceId
     tdeProtectorKeyId: keyVault.outputs.tdeProtectorKey.id
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
   }
