@@ -98,9 +98,11 @@ resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
   }
 }
 
-resource masterDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' existing = {
+resource masterDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
   name: 'master'
   parent: sqlLogicalServer
+  location: location
+  properties: {}
 }
 
 resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
