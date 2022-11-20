@@ -162,4 +162,7 @@ module primaryLogicalDatabase './modules/sql_hyperscale_primary_database.bicep' 
     logAnalyticsWorkspaceName: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceName
     logAnalyticsWorkspaceId: primaryLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
   }
+  dependsOn: [
+    primaryLogicalServer
+  ]
 }
