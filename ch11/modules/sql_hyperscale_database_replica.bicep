@@ -21,7 +21,6 @@ resource sqlHyperscaleDatabase 'Microsoft.Sql/servers/databases@2022-05-01-previ
   }
   properties: {
     createMode: 'Secondary'
-    highAvailabilityReplicaCount: 2
     readScale: 'Enabled'
     requestedBackupStorageRedundancy: 'GeoZone'
     secondaryType: 'Geo'
