@@ -151,7 +151,7 @@ module primaryLogicalServer './modules/sql_logical_server.bicep' = {
 }
 
 // Primary Azure SQL Hyperscale Database
-module primaryLogicalDatabase './modules/sql_hyperscale_primary_database.bicep' = {
+module primaryHyperscaleDatabase './modules/sql_hyperscale_database.bicep' = {
   name: 'primaryDatabase'
   scope: primaryResourceGroup
   params: {
@@ -167,4 +167,43 @@ module primaryLogicalDatabase './modules/sql_hyperscale_primary_database.bicep' 
   ]
 }
 
+// Failover Azure SQL Logical Server
+module failoverLogicalServer './modules/sql_logical_server.bicep' = {
+  name: 'failoverLogicalServer'
+  scope: failoverResourceGroup
+  params: {
+    name: '${failoverRegionPrefix}-${resourceNameSuffix}'
+    location: failoverRegion
+    environment: environment
+    tenantId: subscription().tenantId
+    userAssignedManagedIdentityResourceId: userAssignedManagedIdentity.outputs.userAssignedManagedIdentityResourceId
+    tdeProtectorKeyId: keyVault.outputs.tdeProtectorKeyId
+    sqlAdministratorsGroupId: sqlAdministratorsGroupId
+    vnetId: failoverVirtualNetwork.outputs.vnetId
+    dataSubnetId: failoverVirtualNetwork.outputs.dataSubnetId
+    logAnalyticsWorkspaceName: failoverLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceName
+    logAnalyticsWorkspaceId: failoverLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
+  }
+}
+
+// Failover Azure SQL Hyperscale Database
+module failoverHyperscaleDatabase './modules/sql_hyperscale_database_replica.bicep' = {
+  name: 'failoverDatabase'
+  scope: failoverResourceGroup
+  params: {
+    name: 'hyperscaledb'
+    location: failoverRegion
+    environment: environment
+    logicalServerName: '${failoverRegionPrefix}-${resourceNameSuffix}'
+    sourceDatabaseId: primaryHyperscaleDatabase.outputs.sqlHyperscaleDatabaseId
+    logAnalyticsWorkspaceName: failoverLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceName
+    logAnalyticsWorkspaceId: failoverLogAnalyticsWorkspace.outputs.logAnalyticsWorkspaceId
+  }
+  dependsOn: [
+    failoverLogicalServer
+  ]
+}
+
 output primaryLogicalServerName string = primaryLogicalServer.outputs.logicalServerName
+output primaryHyperscaleDatabaseName string = primaryHyperscaleDatabase.outputs.sqlHyperscaleDatabaseName
+output failoverLogicalServerName string = failoverLogicalServer.outputs.logicalServerName

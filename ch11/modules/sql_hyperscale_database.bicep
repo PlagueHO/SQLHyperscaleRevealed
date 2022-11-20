@@ -20,6 +20,7 @@ resource sqlHyperscaleDatabase 'Microsoft.Sql/servers/databases@2022-05-01-previ
   }
   properties: {
     highAvailabilityReplicaCount: 2
+    readScale: 'Enabled'
     requestedBackupStorageRedundancy: 'GeoZone'
     zoneRedundant: true
   }
@@ -101,3 +102,6 @@ resource sqlHyperscaleDatabaseDiagnostics 'Microsoft.Insights/diagnosticSettings
     workspaceId: logAnalyticsWorkspaceId
   }
 }
+
+output sqlHyperscaleDatabaseId string = sqlHyperscaleDatabase.id
+output sqlHyperscaleDatabaseName string = sqlHyperscaleDatabase.name
