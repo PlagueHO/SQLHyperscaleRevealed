@@ -3,7 +3,7 @@ param location string
 param tenantId string
 param environment string = 'SQL Hyperscale Revealed demo'
 param keyName string
-param managedIdentity string
+param userAssignedManagedIdentityPrincipalId string
 
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: name
@@ -41,10 +41,10 @@ resource keyVaultCryptoServiceEncryptionRoleDefinition 'Microsoft.Authorization/
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, managedIdentity, keyVaultCryptoServiceEncryptionRoleDefinition.id)
+  name: guid(subscription().id, userAssignedManagedIdentityPrincipalId, keyVaultCryptoServiceEncryptionRoleDefinition.id)
   properties: {
     roleDefinitionId: keyVaultCryptoServiceEncryptionRoleDefinition.id
-    principalId: managedIdentity
+    principalId: userAssignedManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }

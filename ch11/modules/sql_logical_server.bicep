@@ -4,7 +4,7 @@ param tenantId string
 param environment string = 'SQL Hyperscale Revealed demo'
 param sqlAdministratorsGroupId string
 param tdeProtectorKey object
-param managedIdentity string
+param userAssignedManagedIdentityResourceId string
 
 resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   name: name
@@ -12,7 +12,7 @@ resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${managedIdentity}': {}
+      '${userAssignedManagedIdentityResourceId}': {}
     }
   }
   properties: {
@@ -25,7 +25,7 @@ resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
       tenantId: tenantId
     }
     keyId: tdeProtectorKey.id
-    primaryUserAssignedIdentityId: managedIdentity
+    primaryUserAssignedIdentityId: userAssignedManagedIdentityResourceId
     publicNetworkAccess: 'Disabled'
   }
   tags: {
