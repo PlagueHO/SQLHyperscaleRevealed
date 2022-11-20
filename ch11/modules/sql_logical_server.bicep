@@ -35,9 +35,15 @@ resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
   }
 }
 
+resource masterDatabase 'Microsoft.Sql/servers/databases@2022-05-01-preview' = {
+  name: 'master'
+  parent: sqlLogicalServer
+  location: location
+}
+
 resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'Send all audit to ${logAnalyticsWorkspaceName}'
-  scope: sqlLogicalServer
+  scope: masterDatabase
   properties: {
     logAnalyticsDestinationType: 'string'
     logs: [
@@ -55,7 +61,7 @@ resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05
 }
 
 resource sqlLogicalServerAuditingSettings 'Microsoft.Sql/servers/auditingSettings@2022-05-01-preview' = {
-  name: '${sqlLogicalServer.name}/Default'
+  name: '${sqlLogicalServer.name}/default'
   properties: {
     state: 'Enabled'
     isAzureMonitorTargetEnabled: true
