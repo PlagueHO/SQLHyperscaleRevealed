@@ -3,7 +3,7 @@ param location string
 param tenantId string
 param environment string = 'SQL Hyperscale Revealed demo'
 param sqlAdministratorsGroupId string
-param tdeProtectorKey object
+param tdeProtectorKeyId string
 param userAssignedManagedIdentityResourceId string
 
 resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
@@ -24,7 +24,7 @@ resource sqlLogicalServer 'Microsoft.Sql/servers@2022-05-01-preview' = {
       sid: sqlAdministratorsGroupId
       tenantId: tenantId
     }
-    keyId: tdeProtectorKey.id
+    keyId: tdeProtectorKeyId
     primaryUserAssignedIdentityId: userAssignedManagedIdentityResourceId
     publicNetworkAccess: 'Disabled'
   }
