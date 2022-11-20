@@ -45,7 +45,6 @@ resource sqlLogicalServerAuditing 'Microsoft.Insights/diagnosticSettings@2021-05
   name: 'Send all audit to ${logAnalyticsWorkspaceName}'
   scope: masterDatabase
   properties: {
-    logAnalyticsDestinationType: 'string'
     logs: [
       {
         category: 'SQLSecurityAuditEvents'

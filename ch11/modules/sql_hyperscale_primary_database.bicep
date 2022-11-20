@@ -32,7 +32,6 @@ resource sqlHyperscaleDatabaseDiagnostics 'Microsoft.Insights/diagnosticSettings
   name: 'Send all logs to ${logAnalyticsWorkspaceName}'
   scope: sqlHyperscaleDatabase
   properties: {
-    logAnalyticsDestinationType: 'string'
     logs: [
       {
         category: 'SQLInsights'
