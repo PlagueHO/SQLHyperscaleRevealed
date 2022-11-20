@@ -50,4 +50,4 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-output tdeProtectorKeyId string = tdeProtectorKey.id
+output tdeProtectorKeyId string = tdeProtectorKey.properties.keyUriWithVersion
