@@ -86,4 +86,4 @@ New-AzDeployment `
         'sqlAdministratorsGroupId' = $sqlAdministratorsGroupId
     }
 
-    Write-Verbose -Message "To redeploy this SQL Hyperscale Revealed environment use: ./New-SQLHyperscaleRevealedHyperscaleEnvironment.ps1 -PrimaryRegion '$PrimaryRegion' -FailoverRegion '$FailoverRegion' -ResourceNameSuffix '$resourceNameSuffix' -Environment '$Environment'" -Verbose
+    Write-Verbose -Message "To redeploy this SQL Hyperscale Revealed environment use: ./Install-SQLHyperscaleRevealedHyperscaleEnvironment.ps1 -PrimaryRegion '$PrimaryRegion' -FailoverRegion '$FailoverRegion' -ResourceNameSuffix '$resourceNameSuffix' -Environment '$Environment'" -Verbose
