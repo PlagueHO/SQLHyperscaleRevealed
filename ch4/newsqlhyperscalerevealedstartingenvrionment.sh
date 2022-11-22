@@ -94,4 +94,4 @@ az deployment sub create \
     --template-file "$scriptPath/starting_environment.bicep" \
     --parameters "primaryRegion=$PrimaryRegion" "failoverRegion=$FailoverRegion" "resourceNameSuffix=$ResourceNameSuffix" "environment=$Environment"
 
-echo "To redeploy this SQL Hyperscale Revealed starting environment use: ./newsqlhyperscalerevealedstartingenvrionment -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"
+echo "To redeploy this SQL Hyperscale Revealed starting environment use: ./newsqlhyperscalerevealedstartingenvrionment.sh -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"

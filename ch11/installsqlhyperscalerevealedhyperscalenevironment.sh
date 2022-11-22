@@ -111,4 +111,4 @@ az deployment sub create \
     --template-file "$scriptPath/sql_hyperscale_revealed_environment.bicep" \
     --parameters "primaryRegion=$PrimaryRegion" "failoverRegion=$FailoverRegion" "resourceNameSuffix=$ResourceNameSuffix" "environment=$Environment" "sqlAdministratorsGroupId=$sqlAdministratorsGroupSid"
 
-echo "To redeploy this SQL Hyperscale Revealed environment use: ./newsqlhyperscalerevealedhyperscaleenvrionment -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"
+echo "To redeploy this SQL Hyperscale Revealed environment use: ./installsqlhyperscalerevealedhyperscalenevironment.sh -p '$PrimaryRegion' -f '$FailoverRegion' -r '$ResourceNameSuffix' -e '$Environment'"
