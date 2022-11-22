@@ -1,7 +1,7 @@
 <#
     .SYNOPSIS
-        Deploys the Hyperscale database and configures it with the following
-        requirements:
+        Deploys the Azure SQL Hyperscale environment using Azure Bicep and configures it with
+        the following requirements:
             - Creates user assigned managed identity for the Hyperscale database.
             - Generates TDE protector key in Key Vault.
             - Reconfigures the primary region virtual network to add AzureBastionSubnet
@@ -33,9 +33,6 @@
     .PARAMETER Environment
         This string will be used to set the Environment tag in each resource.
         It can be used to easily identify that the resources that created by this script.
-
-    .PARAMETER NoFailoverRegion
-        This switch prevents deployment of the resources in the failover region.
 #>
 [CmdletBinding(DefaultParameterSetName = 'ResourceNameSuffix')]
 
@@ -50,11 +47,15 @@ param (
     [System.String]
     $FailoverRegion = 'West US 3',
 
-    [Parameter(Mandatory = $true, HelpMessage = 'The string that will be suffixed into the resource groups and resource names.')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'ResourceNameSuffix', HelpMessage = 'The string that will be suffixed into the resource groups and resource names.')]
     [ValidateNotNullOrEmpty()]
     [ValidateLength(1,4)]
     [System.String]
     $ResourceNameSuffix,
+
+    [Parameter(Mandatory = $true, ParameterSetName = 'UseRandomResourceNameSuffix')]
+    [Switch]
+    $UseRandomResourceNameSuffix,
 
     [Parameter()]
     [ValidateNotNullOrEmpty()]
@@ -62,6 +63,12 @@ param (
     $Environment = 'SQL Hyperscale Revealed demo'
 )
 #>
+
+if ($UseRandomResourceNameSuffix) {
+    # This line generates a random string of 4 characters
+    $resourceNameSuffix = -join ((48..57) + (97..122) | Get-Random -Count 4 | ForEach-Object { [char]$_} )
+    Write-Verbose -Message "Random resource name suffix generated is '$resourceNameSuffix'. Specify this value in the ResourceNameSuffix parameter to redploy the same environment." -Verbose
+}
 
 # Lookup the SID for the SQL Administrators group. This needs to be passed in to the
 # Bicep template to configure the Hyperscale logical server administrators.
@@ -78,3 +85,5 @@ New-AzDeployment `
         'environment' = $Environment
         'sqlAdministratorsGroupId' = $sqlAdministratorsGroupId
     }
+
+    Write-Verbose -Message "To redeploy this SQL Hyperscale Revealed environment use: ./New-SQLHyperscaleRevealedHyperscaleEnvironment.ps1 -PrimaryRegion '$PrimaryRegion' -FailoverRegion '$FailoverRegion' -ResourceNameSuffix '$resourceNameSuffix' -Environment '$Environment'" -Verbose
