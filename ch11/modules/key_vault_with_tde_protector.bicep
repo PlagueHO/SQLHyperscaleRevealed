@@ -35,13 +35,16 @@ resource tdeProtectorKey 'Microsoft.KeyVault/vaults/keys@2022-07-01' = {
   }
 }
 
-var keyVaultCryptoServiceEncryptionRoleId = 'e147488a-f6f5-4113-8e2d-b22465e65bf6'
+resource keyVaultCryptoServiceEncryptionRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: subscription()
+  name: 'e147488a-f6f5-4113-8e2d-b22465e65bf6' // Key Vault Crypto Service Encryption User Role
+}
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(subscription().id, userAssignedManagedIdentityPrincipalId, keyVaultCryptoServiceEncryptionRoleId)
+  name: guid(subscription().id, userAssignedManagedIdentityPrincipalId, keyVaultCryptoServiceEncryptionRoleDefinition.id)
   scope: tdeProtectorKey
   properties: {
-    roleDefinitionId: keyVaultCryptoServiceEncryptionRoleId
+    roleDefinitionId: keyVaultCryptoServiceEncryptionRoleDefinition.id
     principalId: userAssignedManagedIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
