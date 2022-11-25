@@ -37,7 +37,7 @@ resource tdeProtectorKey 'Microsoft.KeyVault/vaults/keys@2022-07-01' = {
 
 resource keyVaultCryptoServiceEncryptionRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
   scope: subscription()
-  name: 'Key Vault Crypto Service Encryption'
+  name: 'Key Vault Crypto Service Encryption User'
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
