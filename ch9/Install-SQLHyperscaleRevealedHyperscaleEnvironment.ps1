@@ -186,19 +186,17 @@ New-AzRoleAssignment @newAzRoleAssignment_parameters | Out-Null
 # ======================================================================================================================
 
 # Create the primary SQL logical server without AAD authentication.
-# Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
-# is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
-# with the Set-AzSqlServerActiveDirectoryAdministrator command.
 Write-Verbose -Message "Creating logical server '$primaryRegionPrefix-$resourceNameSuffix' ..." -Verbose
-$sqlAdministratorPassword = (-join ((48..57) + (97..122) | Get-Random -Count 15 | ForEach-Object { [char]$_} )) + '!'
-$sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
+$sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
 $newAzSqlServer_parameters = @{
     ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
     ResourceGroupName = $primaryRegionResourceGroupName
     Location = $primaryRegion
     ServerVersion = '12.0'
     PublicNetworkAccess = 'Disabled'
-    SqlAdministratorCredentials = $sqlAdministratorCredential
+    EnableActiveDirectoryOnlyAuthentication = $true
+    ExternalAdminName = 'SQL Administrators'
+    ExternalAdminSID = $sqlAdministratorsGroupId
     AssignIdentity = $true
     IdentityType = 'UserAssigned'
     UserAssignedIdentityId = $userAssignedManagedIdentityId
@@ -207,16 +205,6 @@ $newAzSqlServer_parameters = @{
     Tag = $tags
 }
 New-AzSqlServer @newAzSqlServer_parameters | Out-Null
-
-Write-Verbose -Message "Configure administartors of logical server '$primaryRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..." -Verbose
-$sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
-$setAzSqlServerActiveDirectoryAdministrator_parameters = @{
-    ObjectId = $sqlAdministratorsGroupId
-    DisplayName = 'SQL Administrators'
-    ServerName = "$primaryRegionPrefix-$resourceNameSuffix"
-    ResourceGroupName = $primaryRegionResourceGroupName
-}
-Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
 
 # ======================================================================================================================
 # CONNECT LOGICAL SERVER IN PRIMARY REGION TO VIRTUAL NETWORK
@@ -356,19 +344,17 @@ if (-not $NoFailoverRegion.IsPresent) {
     # ======================================================================================================================
 
     # Create the failover SQL logical server without AAD authentication.
-    # Due to a current issue with the New-AzSqlServer command in Az.Sql 3.11 when -ExternalAdminName
-    # is specified, we need to add -SqlAdministratorCredentials and then set the AAD administrator
-    # with the Set-AzSqlServerActiveDirectoryAdministrator command.
     Write-Verbose -Message "Creating logical server '$failoverRegionPrefix-$resourceNameSuffix' ..." -Verbose
-    $sqlAdministratorPassword = (-join ((48..57) + (97..122) | Get-Random -Count 15 | ForEach-Object { [char]$_} )) + '!'
-    $sqlAdministratorCredential = [PSCredential]::new('sqltempadmin', (ConvertTo-SecureString -String $sqlAdministratorPassword -AsPlainText -Force))
+    $sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
     $newAzSqlServer_parameters = @{
         ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
         ResourceGroupName = $failoverRegionResourceGroupName
         Location = $failoverRegion
         ServerVersion = '12.0'
         PublicNetworkAccess = 'Disabled'
-        SqlAdministratorCredentials = $sqlAdministratorCredential
+        EnableActiveDirectoryOnlyAuthentication = $true
+        ExternalAdminName = 'SQL Administrators'
+        ExternalAdminSID = $sqlAdministratorsGroupId
         AssignIdentity = $true
         IdentityType = 'UserAssigned'
         UserAssignedIdentityId = $userAssignedManagedIdentityId
@@ -377,16 +363,6 @@ if (-not $NoFailoverRegion.IsPresent) {
         Tag = $tags
     }
     New-AzSqlServer @newAzSqlServer_parameters | Out-Null
-
-    Write-Verbose -Message "Configure administartors of logical server '$failoverRegionPrefix-$resourceNameSuffix' to be Azure AD 'SQL Administrators' group ..." -Verbose
-    $sqlAdministratorsGroupId = (Get-AzADGroup -DisplayName 'SQL Administrators').Id
-    $setAzSqlServerActiveDirectoryAdministrator_parameters = @{
-        ObjectId = $sqlAdministratorsGroupId
-        DisplayName = 'SQL Administrators'
-        ServerName = "$failoverRegionPrefix-$resourceNameSuffix"
-        ResourceGroupName = $failoverRegionResourceGroupName
-    }
-    Set-AzSqlServerActiveDirectoryAdministrator @setAzSqlServerActiveDirectoryAdministrator_parameters | Out-Null
 
     # ======================================================================================================================
     # CONNECT LOGICAL SERVER IN FAILOVER REGION TO VIRTUAL NETWORK
