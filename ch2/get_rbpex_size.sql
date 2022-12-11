@@ -1,0 +1,1 @@
+SELECT database_id, file_id, size_on_disk_bytes/1024/1024/1024 as Size_on_disk_GB FROM sys.dm_io_virtual_file_stats(DB_ID(), NULL)
